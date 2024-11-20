@@ -46,3 +46,17 @@ export interface Order {
         timestamp: string;
     }[];
 }
+
+export interface TokenConfig {
+    symbol: string;
+    decimals: number;
+    subgraphUrl: string;
+}
+
+export interface NetworkConfig {
+    [token: string]: TokenConfig;
+}
+
+export interface Config {
+    [network: string]: NetworkConfig;
+}

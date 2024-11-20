@@ -3,10 +3,52 @@ import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
 import { Variables, Order } from './types';
 import { query, tradeQuery } from './queries';
+import { config} from './config';
+
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 
 dotenv.config();
 
-const endpoint = 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-polygon/0.6/gn';
+// Parse command-line arguments
+const argv = yargs(hideBin(process.argv))
+  .option('token', {
+    alias: 't',
+    type: 'string',
+    description: 'The token symbol (e.g., IOEN, TFT)',
+    demandOption: true,
+  })
+  .option('network', {
+    alias: 'n',
+    type: 'string',
+    description: 'The network name (e.g., polygon, bsc)',
+    demandOption: true,
+  })
+  .help()
+  .alias('help', 'h')
+  .argv as { token: string; network: string };
+
+// Extract token and network from arguments
+const { token, network } = argv;
+
+// Validate the network
+const networkConfig = config[network];
+if (!networkConfig) {
+  console.error(`Unsupported network: ${network}`);
+  process.exit(1);
+}
+
+// Validate the token
+const tokenConfig = networkConfig[token];
+if (!tokenConfig) {
+  console.error(`Unsupported token: ${token} for network: ${network}`);
+  process.exit(1);
+}
+
+// Extract details
+const endpoint = tokenConfig.subgraphUrl;
+const tokenSymbol = tokenConfig.symbol;
+const tokenDecimals = tokenConfig.decimals;
 
 async function fetchAndFilterOrders(skip = 0, first = 1000): Promise<Order[]> {
     const variables: Variables = { skip, first };
@@ -21,8 +63,8 @@ async function fetchAndFilterOrders(skip = 0, first = 1000): Promise<Order[]> {
 
         // Filter orders where inputs.token.symbol or outputs.token.symbol is "IOEN"
         const filteredOrders = orders.filter(order =>
-            order.inputs.some(input => input.token.symbol === 'IOEN') ||
-            order.outputs.some(output => output.token.symbol === 'IOEN')
+            order.inputs.some(input => input.token.symbol === tokenSymbol) ||
+            order.outputs.some(output => output.token.symbol === tokenSymbol)
         );
 
         return filteredOrders;
@@ -83,7 +125,7 @@ async function analyzeOrders() {
 
         const ioenInputs = filteredOrders
             .flatMap(order => order.inputs)
-            .filter(input => input.token.symbol === 'IOEN')
+            .filter(input => input.token.symbol === tokenSymbol)
             .reduce((sum, input) => {
                 const uniqueKey = input.id;
                 uniqueEntries.add(uniqueKey); // Track all inputs
@@ -92,7 +134,7 @@ async function analyzeOrders() {
 
         const ioenOutputs = filteredOrders
             .flatMap(order => order.outputs)
-            .filter(output => output.token.symbol === 'IOEN')
+            .filter(output => output.token.symbol === tokenSymbol)
             .reduce((sum, output) => {
                 const uniqueKey = output.id;
                 if (!uniqueEntries.has(uniqueKey)) { // Only add if it's not already counted in inputs
@@ -102,7 +144,7 @@ async function analyzeOrders() {
                 return sum; // Skip duplicates
             }, ethers.BigNumber.from(0));
 
-        const totalIOEN = ethers.utils.formatUnits(ioenInputs.add(ioenOutputs), 18);
+        const totalIOEN = ethers.utils.formatUnits(ioenInputs.add(ioenOutputs), tokenDecimals);
 
         console.log('Total IOEN:', totalIOEN);
 
@@ -269,6 +311,7 @@ function calculateVolumes(trades: any[], currentTimestamp: number) {
   
       return {
         token: symbol,
+        decimals: decimals,
         inVolume24h: ethers.utils.formatUnits(inVolume24h, decimals),
         outVolume24h: ethers.utils.formatUnits(outVolume24h, decimals),
         totalVolume24h: ethers.utils.formatUnits(totalVolume24h, decimals),
@@ -284,7 +327,7 @@ function calculateVolumes(trades: any[], currentTimestamp: number) {
   
 async function processOrdersWithAggregation(filteredOrders: any[]) {
     const currentTimestamp = Math.floor(Date.now() / 1000);
-    const aggregatedVolumes: Record<string, { total24h: ethers.BigNumber; totalWeek: ethers.BigNumber; totalAllTime: ethers.BigNumber }> = {};
+    const aggregatedVolumes: Record<string, { total24h: ethers.BigNumber; totalWeek: ethers.BigNumber; totalAllTime: ethers.BigNumber; decimals: number }> = {};
   
     for (const order of filteredOrders) {
       const orderHash = order.orderHash;
@@ -299,18 +342,23 @@ async function processOrdersWithAggregation(filteredOrders: any[]) {
         // Aggregate token volumes
         volumes.forEach(volume => {
           const token = volume.token;
+          const decimals = volume.decimals;
+
   
           if (!aggregatedVolumes[token]) {
             aggregatedVolumes[token] = {
               total24h: ethers.BigNumber.from(0),
               totalWeek: ethers.BigNumber.from(0),
               totalAllTime: ethers.BigNumber.from(0),
+              decimals: decimals
             };
           }
   
-          aggregatedVolumes[token].total24h = aggregatedVolumes[token].total24h.add(ethers.utils.parseUnits(volume.totalVolume24h, 18));
-          aggregatedVolumes[token].totalWeek = aggregatedVolumes[token].totalWeek.add(ethers.utils.parseUnits(volume.totalVolumeWeek, 18));
-          aggregatedVolumes[token].totalAllTime = aggregatedVolumes[token].totalAllTime.add(ethers.utils.parseUnits(volume.totalVolumeAllTime, 18));
+          aggregatedVolumes[token].total24h = aggregatedVolumes[token].total24h.add(ethers.utils.parseUnits(volume.totalVolume24h, decimals));
+          aggregatedVolumes[token].totalWeek = aggregatedVolumes[token].totalWeek.add(ethers.utils.parseUnits(volume.totalVolumeWeek, decimals));
+          aggregatedVolumes[token].totalAllTime = aggregatedVolumes[token].totalAllTime.add(ethers.utils.parseUnits(volume.totalVolumeAllTime, decimals));
+          
+
         });
       } catch (error) {
         console.error(`Error processing order ${orderHash}:`, error);
@@ -320,9 +368,9 @@ async function processOrdersWithAggregation(filteredOrders: any[]) {
     // Format aggregated volumes for printing
     const aggregatedResults = Object.entries(aggregatedVolumes).map(([token, data]) => ({
       token,
-      total24h: ethers.utils.formatUnits(data.total24h, 18),
-      totalWeek: ethers.utils.formatUnits(data.totalWeek, 18),
-      totalAllTime: ethers.utils.formatUnits(data.totalAllTime, 18),
+      total24h: ethers.utils.formatUnits(data.total24h, data.decimals),
+      totalWeek: ethers.utils.formatUnits(data.totalWeek, data.decimals),
+      totalAllTime: ethers.utils.formatUnits(data.totalAllTime, data.decimals),
     }));
   
     console.log('Aggregated Volumes:', aggregatedResults);
