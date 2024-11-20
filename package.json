@@ -9,9 +9,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/yargs": "^17.0.33",
     "axios": "=1.7.7",
     "dotenv": "=16.4.5",
-    "@types/yargs": "=17.0.33"
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@types/node": "=18.16.0",
