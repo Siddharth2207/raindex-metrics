@@ -19,7 +19,7 @@ on:
           - TFT
 
 jobs:
-  generate_and_post_report:
+  metrics:
     runs-on: ubuntu-latest
 
     steps:
