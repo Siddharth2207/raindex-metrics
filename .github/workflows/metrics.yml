@@ -30,6 +30,7 @@ on:
           - QUICK_NEW
           - WFLR
           - sFLR
+          - ALL
 
 jobs:
   metrics:
