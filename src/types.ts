@@ -47,16 +47,46 @@ export interface Order {
     }[];
 }
 
+// export interface TokenConfig {
+//     symbol: string;
+//     decimals: number;
+//     subgraphUrl: string;
+// }
+
+// export interface NetworkConfig {
+//     [token: string]: TokenConfig;
+// }
+
+// export interface Config {
+//     [network: string]: NetworkConfig;
+// }
+
+
+// Define the type for a token configuration
 export interface TokenConfig {
     symbol: string;
     decimals: number;
+    network: string;
+    address: string;
+  }
+
+export interface StablesConfig {
+    symbol: string;
+    decimals: number;
+    address: string;
+  }
+  
+  // Define the type for the network configuration
+  export interface NetworkConfig {
+    chainId: number;
+    rpc: string;
     subgraphUrl: string;
-}
-
-export interface NetworkConfig {
-    [token: string]: TokenConfig;
-}
-
-export interface Config {
-    [network: string]: NetworkConfig;
-}
+    stables: StablesConfig[];
+  }
+  
+  // Define the type for the config object
+  export type Config = Record<string, TokenConfig>;
+  
+  // Define the type for the networkConfig object
+  export type NetworkConfigurations = Record<string, NetworkConfig>;
+  

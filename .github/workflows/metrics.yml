@@ -7,16 +7,30 @@ on:
         required: true
         type: choice
         options:
+          - mainnet
           - polygon
           - bsc
+          - base
+          - flare
 
       token:
         description: 'TOKEN'
         required: true
         type: choice
         options:
+          - PAI
+          - LOCK
           - IOEN
           - TFT
+          - WLTH
+          - PAID
+          - LUCKY
+          - WPOL
+          - QUICK_OLD
+          - QUICK_NEW
+          - WFLR
+          - sFLR
+          - ALL
 
 jobs:
   metrics:
