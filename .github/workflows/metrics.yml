@@ -9,6 +9,7 @@ on:
         options:
           - polygon
           - bsc
+          - base
 
       token:
         description: 'TOKEN'
