@@ -61,7 +61,19 @@ export const tokenConfig: Config = {
     network: 'flare',
     decimals: 18,
     address: '0x12e605bc104e93b45e1ad99f9e555f659051c2bb'
-  }
+  },
+  PAI: {
+    symbol: 'PAI',
+    network: 'mainnet',
+    decimals: 18,
+    address: '0x13e4b8cffe704d3de6f19e52b201d92c21ec18bd'
+  },
+  LOCK: {
+    symbol: 'LOCK',
+    network: 'mainnet',
+    decimals: 18,
+    address: '0x922d8563631b03c2c4cf817f4d18f6883aba0109'
+  },
 };
 
 export const networkConfig: NetworkConfigurations = {
@@ -126,5 +138,27 @@ export const networkConfig: NetworkConfigurations = {
     rpc: 'https://rpc.ankr.com/flare',
     subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-flare/0.8/gn',
     stables:[]
+  },
+  mainnet: {
+    chainId: 1,
+    rpc: 'https://rpc.ankr.com/eth',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-mainnet/2024-10-25-af6a/gn',
+    stables:[
+      {
+        address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+        symbol: 'WETH',
+        decimals: 18
+      },
+      {
+        address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+        symbol: 'USDC',
+        decimals: 6
+      },
+      {
+        address: '0xdac17f958d2ee523a2206206994597c13d831ec7',
+        symbol: 'USDT',
+        decimals: 6
+      }
+    ]
   }
 };
