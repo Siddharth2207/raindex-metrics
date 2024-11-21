@@ -49,6 +49,18 @@ export const tokenConfig: Config = {
     network: 'base',
     decimals: 18,
     address: '0x99b2b1a2adb02b38222adcd057783d7e5d1fcc7d'
+  },
+  WFLR: {
+    symbol: 'WFLR',
+    network: 'flare',
+    decimals: 18,
+    address: '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d'
+  },
+  sFLR: {
+    symbol: 'sFLR',
+    network: 'flare',
+    decimals: 18,
+    address: '0x12e605bc104e93b45e1ad99f9e555f659051c2bb'
   }
 };
 
@@ -109,4 +121,10 @@ export const networkConfig: NetworkConfigurations = {
       }
     ]
   },
+  flare: {
+    chainId: 14,
+    rpc: 'https://rpc.ankr.com/flare',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-flare/0.8/gn',
+    stables:[]
+  }
 };

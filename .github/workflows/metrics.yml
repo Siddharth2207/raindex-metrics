@@ -10,6 +10,7 @@ on:
           - polygon
           - bsc
           - base
+          - flare
 
       token:
         description: 'TOKEN'
@@ -24,6 +25,8 @@ on:
           - WPOL
           - QUICK_OLD
           - QUICK_NEW
+          - WFLR
+          - sFLR
 
 jobs:
   metrics:
