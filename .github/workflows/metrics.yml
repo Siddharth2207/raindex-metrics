@@ -21,6 +21,9 @@ on:
           - WLTH
           - PAID
           - LUCKY
+          - WPOL
+          - QUICK_OLD
+          - QUICK_NEW
 
 jobs:
   metrics:

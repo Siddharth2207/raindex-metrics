@@ -47,13 +47,14 @@ async function fetchAndFilterOrders(skip = 0, first = 1000): Promise<Order[]> {
       console.log(`Fetching orders for all tokens on network: ${network}`);
       return orders; // Return all active orders without filtering
     }
+    const {symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token] 
 
-    console.log(`Fetching orders for token: ${token} on network: ${network}`);
+    console.log(`Fetching orders for token: ${tokenSymbol} on network: ${network}`);
 
     // Filter orders where inputs.token.symbol or outputs.token.symbol matches the specified token
     const filteredOrders = orders.filter(order =>
-      order.inputs.some(input => input.token.symbol === token) ||
-      order.outputs.some(output => output.token.symbol === token)
+      order.inputs.some(input => input.token.symbol === tokenSymbol) ||
+      order.outputs.some(output => output.token.symbol === tokenSymbol)
     );
 
     return filteredOrders;

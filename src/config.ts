@@ -8,6 +8,24 @@ export const tokenConfig: Config = {
     network: 'polygon',
     address: '0xd0e9c8f5fae381459cf07ec506c1d2896e8b5df6'
   },
+  WPOL: {
+    symbol: 'WPOL',
+    network: 'polygon',
+    decimals: 18,
+    address: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270'
+  },
+  QUICK_NEW: {
+    symbol: 'QUICK',
+    network: 'polygon',
+    decimals: 18,
+    address: '0xb5c064f955d8e7f38fe0460c556a72987494ee17'
+  },
+  QUICK_OLD: {
+    symbol: 'QUICK',
+    network: 'polygon',
+    decimals: 18,
+    address: '0x831753dd7087cac61ab5644b308642cc1c33dc13'
+  },
   TFT: {
     symbol: 'TFT',
     decimals: 7,
