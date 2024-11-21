@@ -109,7 +109,7 @@ async function analyzeOrders() {
             {
               symbol: tokenSymbol,
               decimals : tokenDecimals,
-              tokenAddress: tokenAddress
+              address: tokenAddress
             }
           )
           tokenArray = [...tokenArray, ...networkConfig[network].stables];

@@ -13,6 +13,24 @@ export const tokenConfig: Config = {
     decimals: 7,
     network: 'bsc',
     address: '0x8f0fb159380176d324542b3a7933f0c2fd0c2bbf'
+  },
+  PAID: {
+    symbol: 'PAID',
+    network: 'base',
+    decimals: 18,
+    address: '0x655a51e6803faf50d4ace80fa501af2f29c856cf'
+  },
+  LUCKY: {
+    symbol: 'LUCKY',
+    network: 'base',
+    decimals: 18,
+    address: '0x2c002ffec41568d138acc36f5894d6156398d539'
+  },
+  WLTH: {
+    symbol: 'WLTH',
+    network: 'base',
+    decimals: 18,
+    address: '0x99b2b1a2adb02b38222adcd057783d7e5d1fcc7d'
   }
 };
 
@@ -53,6 +71,23 @@ export const networkConfig: NetworkConfigurations = {
         address: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
         symbol: 'WBNB',
         decimals: 18
+      }
+    ]
+  },
+  base: {
+    chainId: 8453,
+    rpc: 'https://mainnet.base.org',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-base/0.9/gn',
+    stables:[
+      {
+        address: '0x4200000000000000000000000000000000000006',
+        symbol: 'WETH',
+        decimals: 18
+      },
+      {
+        address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
+        symbol: 'USDC',
+        decimals: 6
       }
     ]
   },

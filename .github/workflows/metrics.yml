@@ -17,6 +17,9 @@ on:
         options:
           - IOEN
           - TFT
+          - WLTH
+          - PAID
+          - LUCKY
 
 jobs:
   metrics:
