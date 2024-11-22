@@ -9,31 +9,10 @@ import yargs from 'yargs';
 
 dotenv.config();
 
-// Parse command-line arguments
-const argv = yargs(hideBin(process.argv))
-  .option('token', {
-    alias: 't',
-    type: 'string',
-    description: 'The token symbol (e.g., IOEN, TFT, or ALL)',
-    demandOption: true,
-  })
-  .option('network', {
-    alias: 'n',
-    type: 'string',
-    description: 'The network name (e.g., polygon, bsc)',
-    demandOption: true,
-  })
-  .help()
-  .alias('help', 'h')
-  .argv as { token: string; network: string };
-
-// Extract token and network from arguments
-const { token, network } = argv;
-
-const endpoint = networkConfig[network].subgraphUrl
-
-async function fetchAndFilterOrders(skip = 0, first = 1000): Promise<Order[]> {
+async function fetchAndFilterOrders(token: string , network: string, skip = 0, first = 1000): Promise<Order[]> {
   const variables: Variables = { skip, first };
+
+  const endpoint = networkConfig[network].subgraphUrl
 
   try {
     const response = await axios.post(endpoint, {
@@ -68,11 +47,12 @@ async function fetchAndFilterOrders(skip = 0, first = 1000): Promise<Order[]> {
   }
 }
 
-async function analyzeOrders() {
+async function singleNetwork(token: string, network: string) {
     try {
-        const filteredOrders = await fetchAndFilterOrders();
+        const filteredOrders = await fetchAndFilterOrders(token, network);
+        const endpoint = networkConfig[network].subgraphUrl;
 
-        orderMetrics(filteredOrders) 
+        await orderMetrics(filteredOrders) 
 
         let tokenArray = []        
 
@@ -101,7 +81,7 @@ async function analyzeOrders() {
             addressKey,
             ...details,
           }));
-    
+
         } else {
 
           const {symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token] 
@@ -117,13 +97,54 @@ async function analyzeOrders() {
 
         }
 
-        tokenMetrics(filteredOrders,tokenArray)
+        await tokenMetrics(filteredOrders,tokenArray)
 
-        volumeMetrics(endpoint, filteredOrders)
+        await volumeMetrics(endpoint, filteredOrders)
 
     } catch (error) {
         console.error('Error analyzing orders:', error);
     }
 }
+
+async function multiNetwork(token: string, network: string) {
+    
+    const networkKeys: string[] = Object.keys(networkConfig);
+
+    for(const network of networkKeys){
+      console.log(`--------------------------------------------------- ${network.toUpperCase()} ---------------------------------------------------`)
+      await singleNetwork(token, network)
+    }
+
+}
+
+async function analyzeOrders(token: string, network: string) {
+
+  if(token === "ALL" && network === "ALL"){ 
+    multiNetwork(token, network);
+  } else{
+    singleNetwork(token, network)
+  }
+}
+
+// Parse command-line arguments
+const argv = yargs(hideBin(process.argv))
+  .option('token', {
+    alias: 't',
+    type: 'string',
+    description: 'The token symbol (e.g., IOEN, TFT, or ALL)',
+    demandOption: true,
+  })
+  .option('network', {
+    alias: 'n',
+    type: 'string',
+    description: 'The network name (e.g., polygon, bsc)',
+    demandOption: true,
+  })
+  .help()
+  .alias('help', 'h')
+  .argv as { token: string; network: string };
+
+// Extract token and network from arguments
+const { token, network } = argv;
   
-analyzeOrders();
+analyzeOrders(token, network);

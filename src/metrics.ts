@@ -98,7 +98,7 @@ export async function volumeMetrics(endpoint: string, filteredOrders: any[]) {
   console.log('Trades in Last Week:', tradesLastWeek);
   console.log('Trade Distribution by Order:', tradeDistribution);
 
-  processOrdersWithAggregation(endpoint, filteredOrders);
+  await processOrdersWithAggregation(endpoint, filteredOrders);
   
 }
 

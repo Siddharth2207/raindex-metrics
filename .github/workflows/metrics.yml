@@ -12,6 +12,7 @@ on:
           - bsc
           - base
           - flare
+          - ALL
 
       token:
         description: 'TOKEN'
