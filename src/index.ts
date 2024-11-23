@@ -4,7 +4,7 @@ import { Variables, Order } from './types';
 import { query } from './queries';
 import { tokenConfig, networkConfig } from './config';
 import { hideBin } from 'yargs/helpers';
-import {orderMetrics, tokenMetrics, volumeMetrics} from './metrics'
+import {orderMetrics, tokenMetrics, volumeMetrics, analyzeLiquidity} from './metrics'
 import yargs from 'yargs';
 
 dotenv.config();
@@ -52,6 +52,8 @@ async function singleNetwork(token: string, network: string) {
         const filteredOrders = await fetchAndFilterOrders(token, network);
         const endpoint = networkConfig[network].subgraphUrl;
 
+        const {aggregatedResult, total24hUsdSum, tradesLast24Hours} = await volumeMetrics(network, filteredOrders)
+
         await orderMetrics(filteredOrders) 
 
         let tokenArray = []        
@@ -95,11 +97,13 @@ async function singleNetwork(token: string, network: string) {
           )
           tokenArray = [...tokenArray, ...networkConfig[network].stables];
 
+          analyzeLiquidity(tokenAddress,tradesLast24Hours,total24hUsdSum);
         }
 
         await tokenMetrics(filteredOrders,tokenArray)
+        
+        console.log('Aggregated Volumes:', aggregatedResult);
 
-        await volumeMetrics(endpoint, filteredOrders)
 
     } catch (error) {
         console.error('Error analyzing orders:', error);

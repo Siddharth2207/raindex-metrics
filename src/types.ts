@@ -77,16 +77,24 @@ export interface StablesConfig {
   }
   
   // Define the type for the network configuration
-  export interface NetworkConfig {
-    chainId: number;
-    rpc: string;
-    subgraphUrl: string;
-    stables: StablesConfig[];
+export interface NetworkConfig {
+chainId: number;
+rpc: string;
+subgraphUrl: string;
+stables: StablesConfig[];
+}
+
+// Define the type for the config object
+export type Config = Record<string, TokenConfig>;
+
+// Define the type for the networkConfig object
+export type NetworkConfigurations = Record<string, NetworkConfig>;
+
+export interface LiquidityPool {
+    volume24h: number;
+    trades24h: number;
+    pairAddress: string;
+    dex: string;
   }
   
-  // Define the type for the config object
-  export type Config = Record<string, TokenConfig>;
-  
-  // Define the type for the networkConfig object
-  export type NetworkConfigurations = Record<string, NetworkConfig>;
   
