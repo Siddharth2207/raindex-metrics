@@ -51,6 +51,7 @@ export const tradeQuery = `query OrderTakesListQuery($orderHash: Bytes!, $skip: 
       orderHash: $orderHash
     }
   }) {
+    timestamp
     tradeEvent {
       transaction {
         id

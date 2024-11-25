@@ -2,6 +2,7 @@ import axios from 'axios';
 import { ethers } from 'ethers';
 import { tradeQuery } from './queries';
 import { networkConfig } from './config';
+import { LiquidityPool, AggregatedLiquidityData, LiquidityAnalysisResult } from './types';
 
 const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
 const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -17,21 +18,12 @@ export async function orderMetrics(filteredActiveOrders: any[], filteredInActive
     ) * 1000).toISOString()
     : null;
 
-  console.log('Total Active Orders:', totalActiveOrders);
-  console.log('Total InActive Orders:', totalInActiveOrders);
-
-  console.log('Unique Owners:', uniqueOwners);
-  console.log('Last Order Date:', lastOrderDate);
-
   const ordersLast24Hours = filteredActiveOrders.filter(order =>
     new Date(Number(order.timestampAdded) * 1000) >= last24Hours
   );
   const ordersLastWeek = filteredActiveOrders.filter(order =>
     new Date(Number(order.timestampAdded) * 1000) >= lastWeek
   );
-
-  console.log("orders added in last 24 hrs : ", ordersLast24Hours.length)
-  console.log("orders added in last week : ", ordersLastWeek.length)
 
   const uniqueOwnersLast24Hours = new Set(
     ordersLast24Hours.map(order => order.owner)
@@ -40,82 +32,90 @@ export async function orderMetrics(filteredActiveOrders: any[], filteredInActive
     ordersLastWeek.map(order => order.owner)
   ).size;
 
-  console.log("unique owner in last 24 hrs: ", uniqueOwnersLast24Hours)
-  console.log("unique owner in last week: ", uniqueOwnersLastWeek)
+  // Aggregate all log messages into a single string
+  const logMessages = [
+    `Total Active Orders: ${totalActiveOrders}`,
+    `Total InActive Orders: ${totalInActiveOrders}`,
+    `Unique Owners: ${uniqueOwners}`,
+    `Last Order Date: ${lastOrderDate}`,
+    `Orders added in last 24 hrs: ${ordersLast24Hours.length}`,
+    `Orders added in last week: ${ordersLastWeek.length}`,
+    `Unique owners in last 24 hrs: ${uniqueOwnersLast24Hours}`,
+    `Unique owners in last week: ${uniqueOwnersLastWeek}`,
+  ];
+  
+  return logMessages
 }
 
-export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]) {
+export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): Promise<string[]> {
+  const logMessages: string[] = [];
 
   for (const token of tokensArray) {
     const { symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = token;
 
     const uniqueEntries = new Set<string>();
 
-    const fundedOrders = filteredOrders
-      .filter((order) => {
-        let inputsFunded, outputsFunded
+    const fundedOrders = filteredOrders.filter((order) => {
+      let inputsFunded, outputsFunded;
 
-        for (let i = 0; i < order.inputs.length; i++) {
-          let inputVault = order.inputs[i]
-          if (inputVault.balance > 0) {
-            inputsFunded = true
-          }
+      for (let i = 0; i < order.inputs.length; i++) {
+        let inputVault = order.inputs[i];
+        if (inputVault.balance > 0) {
+          inputsFunded = true;
         }
+      }
 
-        for (let i = 0; i < order.outputs.length; i++) {
-          let outputVault = order.outputs[i]
-          if (outputVault.balance > 0) {
-            outputsFunded = true
-          }
+      for (let i = 0; i < order.outputs.length; i++) {
+        let outputVault = order.outputs[i];
+        if (outputVault.balance > 0) {
+          outputsFunded = true;
         }
-        
-        return inputsFunded || outputsFunded || false
-      });
+      }
 
-    console.log("fundedOrders  ", fundedOrders.length)
+      return inputsFunded || outputsFunded || false;
+    });
+
+    logMessages.push(`Funded Orders for ${tokenSymbol}: ${fundedOrders.length}`);
 
     const totalInputsVaults = filteredOrders
       .flatMap(order => order.inputs)
       .filter(input => input.token.address === tokenAddress);
 
-    const totalInputs = totalInputsVaults
-      .reduce((sum, input) => {
-        const uniqueKey = input.id;
-        uniqueEntries.add(uniqueKey); // Track all inputs
-        return sum.add(ethers.BigNumber.from(input.balance));
-      }, ethers.BigNumber.from(0));
+    const totalInputs = totalInputsVaults.reduce((sum, input) => {
+      const uniqueKey = input.id;
+      uniqueEntries.add(uniqueKey); // Track all inputs
+      return sum.add(ethers.BigNumber.from(input.balance));
+    }, ethers.BigNumber.from(0));
 
     const totalOutputsVaults = filteredOrders
       .flatMap(order => order.outputs)
-      .filter(output => output.token.address === tokenAddress)
+      .filter(output => output.token.address === tokenAddress);
 
-    const totalOutputs = totalOutputsVaults
-      .reduce((sum, output) => {
-        const uniqueKey = output.id;
-        if (!uniqueEntries.has(uniqueKey)) { // Only add if it's not already counted in inputs
-          uniqueEntries.add(uniqueKey);
-          return sum.add(ethers.BigNumber.from(output.balance));
-        }
-        return sum; // Skip duplicates
-      }, ethers.BigNumber.from(0));
+    const totalOutputs = totalOutputsVaults.reduce((sum, output) => {
+      const uniqueKey = output.id;
+      if (!uniqueEntries.has(uniqueKey)) {
+        // Only add if it's not already counted in inputs
+        uniqueEntries.add(uniqueKey);
+        return sum.add(ethers.BigNumber.from(output.balance));
+      }
+      return sum; // Skip duplicates
+    }, ethers.BigNumber.from(0));
 
     const totalTokens = ethers.utils.formatUnits(totalInputs.add(totalOutputs), tokenDecimals);
 
-    console.log(`Total ${tokenSymbol}: ${totalTokens}`);
-    console.log(`Count ${tokenSymbol} Vaults: ${totalInputsVaults.length + totalOutputsVaults.length}`)
-
+    logMessages.push(`Total ${tokenSymbol}: ${totalTokens}`);
+    logMessages.push(`Count ${tokenSymbol} Vaults: ${totalInputsVaults.length + totalOutputsVaults.length}`);
   }
 
+  return logMessages;
 }
 
 export async function volumeMetrics(network: string, filteredOrders: any[]): Promise<any> {
 
   const endpoint = networkConfig[network].subgraphUrl;
-  const { aggregatedResults, tradesLast24Hours } = await processOrdersWithAggregation(endpoint, filteredOrders);
-  const total24hUsdSum = aggregatedResults.reduce((sum: any, item: any) => sum + parseFloat(item.total24hUsd), 0);
+  const { aggregatedResults, processOrderLogMessage } = await processOrdersWithAggregation(endpoint, filteredOrders);
 
-  return { aggregatedResults, total24hUsdSum, tradesLast24Hours }
-
+  return { aggregatedResults, processOrderLogMessage }
 }
 
 async function fetchTrades(endpoint: string, orderHash: string): Promise<any[]> {
@@ -223,11 +223,13 @@ function calculateVolumes(trades: any[], currentTimestamp: number) {
   });
 }
 
-async function processOrdersWithAggregation(endpoint: string, filteredOrders: any[]): Promise<any> {
+async function processOrdersWithAggregation(endpoint: string, filteredOrders: any[]): Promise<{ aggregatedResults: any[]; processOrderLogMessage: string[] }> {
   const currentTimestamp = Math.floor(Date.now() / 1000);
   const aggregatedVolumes: Record<string, { total24h: ethers.BigNumber; totalWeek: ethers.BigNumber; totalAllTime: ethers.BigNumber; decimals: number; address: string, symbol: string }> = {};
 
-  let orderTrades = []
+  let orderTrades = [];
+  let processOrderLogMessage: string[] = [];
+
   for (const order of filteredOrders) {
     const orderHash = order.orderHash;
 
@@ -238,7 +240,7 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
       orderTrades.push({
         orderHash: orderHash,
         trades: trades
-      })
+      });
 
       // Calculate volumes for the trades
       const volumes = calculateVolumes(trades, currentTimestamp);
@@ -263,33 +265,33 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
         aggregatedVolumes[token].total24h = aggregatedVolumes[token].total24h.add(ethers.utils.parseUnits(volume.totalVolume24h, decimals));
         aggregatedVolumes[token].totalWeek = aggregatedVolumes[token].totalWeek.add(ethers.utils.parseUnits(volume.totalVolumeWeek, decimals));
         aggregatedVolumes[token].totalAllTime = aggregatedVolumes[token].totalAllTime.add(ethers.utils.parseUnits(volume.totalVolumeAllTime, decimals));
-
-
       });
     } catch (error) {
       console.error(`Error processing order ${orderHash}:`, error);
+      processOrderLogMessage.push(`Error processing order ${orderHash}: ${error}`);
     }
   }
 
   const totalTrades = orderTrades.reduce((sum, order) => sum + order.trades.length, 0);
-  const tradesLast24Hours = filteredOrders
+  const tradesLast24Hours = orderTrades
     .flatMap(order => order.trades)
     .filter(trade => new Date(Number(trade.timestamp) * 1000) >= last24Hours).length;
 
-  const tradesLastWeek = filteredOrders
+  const tradesLastWeek = orderTrades
     .flatMap(order => order.trades)
     .filter(trade => new Date(Number(trade.timestamp) * 1000) >= lastWeek).length;
 
-  const tradeDistribution = filteredOrders.map(order => ({
+  const tradeDistribution = orderTrades.map(order => ({
     orderHash: order.orderHash,
     tradeCount: order.trades.length,
     tradePercentage: ((order.trades.length / totalTrades) * 100).toFixed(2),
   }));
 
-  console.log('Total Trades:', totalTrades);
-  console.log('Trades in Last 24 Hours:', tradesLast24Hours);
-  console.log('Trades in Last Week:', tradesLastWeek);
-  console.log('Trade Distribution by Order:', tradeDistribution);
+  processOrderLogMessage.push(`Trade Metrics:`);
+  processOrderLogMessage.push(`- Total Trades: ${totalTrades}`);
+  processOrderLogMessage.push(`- Trades in Last 24 Hours: ${tradesLast24Hours}`);
+  processOrderLogMessage.push(`- Trades in Last Week: ${tradesLastWeek}`);
+  processOrderLogMessage.push(`- Trade Distribution by Order: ${JSON.stringify(tradeDistribution, null, 2)}`);
 
   // Format aggregated volumes for printing
   let aggregatedResults = Object.entries(aggregatedVolumes).map(([token, data]) => ({
@@ -300,13 +302,29 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
     total24h: ethers.utils.formatUnits(data.total24h, data.decimals),
     totalWeek: ethers.utils.formatUnits(data.totalWeek, data.decimals),
     totalAllTime: ethers.utils.formatUnits(data.totalAllTime, data.decimals),
+    total24hAveUsd: 0,
+    totalWeekUsd: 0,
+    totalAllTimeUsd: 0
   }));
 
   aggregatedResults = await convertVolumesToUSD(aggregatedResults);
 
-  return { aggregatedResults, tradesLast24Hours }
+  // Add aggregated volume metrics to processOrderLogMessage
+  processOrderLogMessage.push(`Aggregated Volume Metrics:`);
+  aggregatedResults.forEach(entry => {
+    processOrderLogMessage.push(`- **Token**: ${entry.token}`);
+    processOrderLogMessage.push(`  - **Symbol**: ${entry.symbol}`);
+    processOrderLogMessage.push(`  - **24h Volume**: $${entry.total24h}`);
+    processOrderLogMessage.push(`  - **Week Volume**: $${entry.totalWeek}`);
+    processOrderLogMessage.push(`  - **All Time Volume**: $${entry.totalAllTime}`);
+    processOrderLogMessage.push(`  - **24h Volume (USD)**: $${entry.total24hAveUsd}`);
+    processOrderLogMessage.push(`  - **Week Volume (USD)**: $${entry.totalWeekUsd}`);
+    processOrderLogMessage.push(`  - **All Time Volume (USD)**: $${entry.totalAllTimeUsd}`);
+  });
 
+  return { aggregatedResults, processOrderLogMessage };
 }
+
 
 async function fetchTokenPriceFromDexScreener(
   tokenAddress: string,
@@ -359,14 +377,14 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
         // Convert total volumes to USD
         item.total24hAveUsd = (parseFloat(item.total24h) * tokenPrice).toString();
         item.totalWeekUsd = (parseFloat(item.totalWeek) * tokenPrice).toString();
-        item.totalAllTime = (parseFloat(item.totalAllTime) * tokenPrice).toString();
+        item.totalAllTimeUsd = (parseFloat(item.totalAllTime) * tokenPrice).toString();
 
 
       } else {
         console.warn(`Could not fetch price for token ${tokenAddress}. Skipping USD conversion.`);
         item.total24hUsd = 0;
         item.totalWeekUsd = 0;
-        item.totalAllTime = 0;
+        item.totalAllTimeUsd = 0;
 
       }
     }
@@ -375,3 +393,51 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
   return data;
 }
 
+async function fetchLiquidityData(tokenAddress: string): Promise<LiquidityPool[]> {
+  const endpoint = `https://api.dexscreener.io/latest/dex/search?q=${tokenAddress}`;
+  
+  try {
+    const response = await axios.get(endpoint);
+    const data = response.data;
+    
+    if (data && data.pairs) {
+      return data.pairs.map((pair: any) => ({
+        volume24h: pair.volume?.h24 || 0,
+        trades24h: pair.txns?.h24?.buys + pair.txns?.h24?.sells || 0,
+        pairAddress: pair.pairAddress,
+        dex: pair.dexId,
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching liquidity data:', error);
+    throw error;
+  }
+}
+
+export async function analyzeLiquidity(
+  tokenAddress: string
+): Promise<LiquidityAnalysisResult> {
+  const liquidityData = await fetchLiquidityData(tokenAddress);
+
+  // Calculate total volumes and trades across all pools
+  const totalPoolVolume = liquidityData.reduce((sum, pool) => sum + pool.volume24h, 0);
+  const totalPoolTrades = liquidityData.reduce((sum, pool) => sum + pool.trades24h, 0);
+
+  // Generate results
+  const liquidityDataAggregated = liquidityData.map((pool: LiquidityPool) => {
+    return {
+      dex: pool.dex,
+      pairAddress: pool.pairAddress,
+      totalPoolVolume: pool.volume24h.toFixed(2),
+      totalPoolTrades: pool.trades24h,
+    };
+  });
+
+  return {
+    totalPoolVolume,
+    totalPoolTrades,
+    liquidityDataAggregated,
+  };
+}

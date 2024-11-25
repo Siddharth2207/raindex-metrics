@@ -81,4 +81,15 @@ export interface LiquidityPool {
     dex: string;
   }
   
+export interface AggregatedLiquidityData {
+    dex: string;
+    pairAddress: string;
+    totalPoolVolume: string;
+    totalPoolTrades: number;
+  }
   
+export  interface LiquidityAnalysisResult {
+    totalPoolVolume: number;
+    totalPoolTrades: number;
+    liquidityDataAggregated: AggregatedLiquidityData[];
+  }
