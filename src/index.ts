@@ -4,12 +4,12 @@ import { Variables, Order } from './types';
 import { query } from './queries';
 import { tokenConfig, networkConfig } from './config';
 import { hideBin } from 'yargs/helpers';
-import {orderMetrics, tokenMetrics, volumeMetrics, analyzeLiquidity} from './metrics'
+import {orderMetrics, tokenMetrics, volumeMetrics} from './metrics'
 import yargs from 'yargs';
 
 dotenv.config();
 
-async function fetchAndFilterOrders(token: string , network: string, skip = 0, first = 1000): Promise<Order[]> {
+async function fetchAndFilterOrders(token: string , network: string, skip = 0, first = 1000): Promise<any> {
   const variables: Variables = { skip, first };
 
   const endpoint = networkConfig[network].subgraphUrl
@@ -21,55 +21,59 @@ async function fetchAndFilterOrders(token: string , network: string, skip = 0, f
     });
 
     const orders: Order[] = response.data.data.orders;
+    const activeOrders = orders.filter(order => order.active)
+    const inActiveOrders = orders.filter(order => !order.active)
 
     if (token === 'ALL') {
       console.log(`Fetching orders for all tokens on network: ${network}`);
-      return orders; // Return all active orders without filtering
+      return {activeOrders, inActiveOrders}; // Return all active orders without filtering
     }
     const {symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token] 
 
     console.log(`Fetching orders for token: ${tokenSymbol} on network: ${network}`);
 
     // Filter orders where inputs.token.symbol or outputs.token.symbol matches the specified token
-    const filteredOrders = orders.filter(order =>
+    const filteredActiveOrders = activeOrders.filter(order =>
       order.inputs.some(input => input.token.symbol === tokenSymbol) ||
       order.outputs.some(output => output.token.symbol === tokenSymbol)
     );
 
-    return filteredOrders;
+    const filteredInActiveOrders = inActiveOrders.filter(order =>
+      order.inputs.some(input => input.token.symbol === tokenSymbol) ||
+      order.outputs.some(output => output.token.symbol === tokenSymbol)
+    );
+
+    return {filteredActiveOrders, filteredInActiveOrders};
+
   } catch (error) {
     if (error instanceof Error) {
       console.error('Error fetching orders:', error.message);
     } else {
       console.error('Unexpected error:', JSON.stringify(error));
     }
-    throw error; // Rethrow the error to ensure the function doesn't return undefined
+    throw error;
   }
 }
 
 async function singleNetwork(token: string, network: string) {
     try {
-        const filteredOrders = await fetchAndFilterOrders(token, network);
-        const endpoint = networkConfig[network].subgraphUrl;
+        const {filteredActiveOrders, filteredInActiveOrders} = await fetchAndFilterOrders(token, network);
+        const {aggregatedResults} = await volumeMetrics(network, filteredActiveOrders)
 
-        const {aggregatedResult, total24hUsdSum, tradesLast24Hours} = await volumeMetrics(network, filteredOrders)
-
-        await orderMetrics(filteredOrders) 
-
+        await orderMetrics(filteredActiveOrders, filteredInActiveOrders)
         let tokenArray = []        
-
         if (token === 'ALL') {
           const allTokens = new Map<string, { symbol: string; decimals: number; address: string }>();
 
-          filteredOrders.forEach(order => {
-            order.inputs.forEach(input => {
+          filteredActiveOrders.forEach((order : any) => {
+            order.inputs.forEach((input: any) => {
               allTokens.set(input.token.address, {
                 symbol: input.token.symbol,
                 decimals: Number(input.token.decimals),
                 address: input.token.address
               });
             });
-            order.outputs.forEach(output => {
+            order.outputs.forEach((output: any) => {
               allTokens.set(output.token.address, {
                 symbol: output.token.symbol,
                 decimals: Number(output.token.decimals),
@@ -85,9 +89,7 @@ async function singleNetwork(token: string, network: string) {
           }));
 
         } else {
-
           const {symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token] 
-
           tokenArray.push(
             {
               symbol: tokenSymbol,
@@ -96,33 +98,26 @@ async function singleNetwork(token: string, network: string) {
             }
           )
           tokenArray = [...tokenArray, ...networkConfig[network].stables];
-
-          analyzeLiquidity(tokenAddress,tradesLast24Hours,total24hUsdSum);
         }
 
-        await tokenMetrics(filteredOrders,tokenArray)
+        await tokenMetrics(filteredActiveOrders,tokenArray)
         
-        console.log('Aggregated Volumes:', aggregatedResult);
-
-
+        console.log('Aggregated Volumes:', aggregatedResults);
+        
     } catch (error) {
         console.error('Error analyzing orders:', error);
     }
 }
 
-async function multiNetwork(token: string, network: string) {
-    
+async function multiNetwork(token: string, network: string) {    
     const networkKeys: string[] = Object.keys(networkConfig);
-
     for(const network of networkKeys){
       console.log(`--------------------------------------------------- ${network.toUpperCase()} ---------------------------------------------------`)
       await singleNetwork(token, network)
     }
-
 }
 
 async function analyzeOrders(token: string, network: string) {
-
   if(token === "ALL" && network === "ALL"){ 
     multiNetwork(token, network);
   } else{

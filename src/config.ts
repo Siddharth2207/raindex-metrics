@@ -113,6 +113,11 @@ export const networkConfig: NetworkConfigurations = {
         address: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
         symbol: 'WBNB',
         decimals: 18
+      },
+      {
+        address: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+        symbol: 'USDC',
+        decimals: 18
       }
     ]
   },
