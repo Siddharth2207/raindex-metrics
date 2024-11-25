@@ -12,6 +12,7 @@ on:
           - bsc
           - base
           - flare
+          - ALL
 
       token:
         description: 'TOKEN'
@@ -71,4 +72,11 @@ jobs:
         env:
           TOKEN_SYMBOL: ${{ inputs.token }}
           NETWORK: ${{ inputs.network }}
-        run: nix develop -c raindex-metrics
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: nix develop -c raindex-metrics > output.md         
+
+      - name: Upload markdown file
+        uses: actions/upload-artifact@v3
+        with:
+          name: ci-output-${{ github.run_id }}.md
+          path: output.md 
