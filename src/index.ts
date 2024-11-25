@@ -10,7 +10,7 @@ import yargs from 'yargs';
 dotenv.config();
 const openaiToken = process.env.OPENAI_API_KEY as string;
 
-async function fetchAndFilterOrders(token: string , network: string, skip = 0, first = 1000): Promise<any> {
+async function fetchAndFilterOrders(token: string , network: string, skip = 0, first = 1000): Promise<{ filteredActiveOrders: Order[]; filteredInActiveOrders: Order[] }> {
   const variables: Variables = { skip, first };
 
   const endpoint = networkConfig[network].subgraphUrl
@@ -25,9 +25,9 @@ async function fetchAndFilterOrders(token: string , network: string, skip = 0, f
     const activeOrders = orders.filter(order => order.active)
     const inActiveOrders = orders.filter(order => !order.active)
 
-    if (token === 'ALL') {
-      console.log(`Fetching orders for all tokens on network: ${network}`);
-      return {activeOrders, inActiveOrders}; // Return all active orders without filtering
+
+    if (token === "ALL") {
+      return { filteredActiveOrders: activeOrders, filteredInActiveOrders: inActiveOrders }; // Return all active orders without filtering
     }
     const {symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token] 
 
