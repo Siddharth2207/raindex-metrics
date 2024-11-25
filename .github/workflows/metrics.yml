@@ -73,6 +73,8 @@ jobs:
           TOKEN_SYMBOL: ${{ inputs.token }}
           NETWORK: ${{ inputs.network }}
         run: nix develop -c raindex-metrics > output.md
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Upload markdown file
         uses: actions/upload-artifact@v3
