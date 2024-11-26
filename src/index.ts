@@ -66,6 +66,7 @@ async function singleNetwork(token: string, network: string) {
     let tokenArray = [];
     let liquidityAnalysisLog: string[] = [];
     let liquiditySummary = '';
+
     if (token === 'ALL') {
       const allTokens = new Map<string, { symbol: string; decimals: number; address: string }>();
 
@@ -112,21 +113,18 @@ async function singleNetwork(token: string, network: string) {
         liquidityAnalysisLog.push(`  - Pool Size: ${pool.totalPoolSizeUsd} USD`);
         liquidityAnalysisLog.push(`  - Base Token Liquidity: ${pool.poolBaseTokenLiquidity}`);
         liquidityAnalysisLog.push(`  - Quote Token Liquidity: ${pool.poolQuoteTokenLiquidity}`);
-
       });
 
-      // Generate summary
-      liquiditySummary = `${tokenSymbol}'s trading activity represents about ${(liquidityAnalysis.totalPoolVolume / 10000).toFixed(2)}% of the total volume across ${
+      liquiditySummary = `${tokenSymbol}'s trading activity represents about ${(liquidityAnalysis.totalPoolVolume / 10000).toFixed(
+        2
+      )}% of the total volume across ${
         liquidityAnalysis.liquidityDataAggregated.length
-      } ${liquidityAnalysis.liquidityDataAggregated.map((pool: any) => pool.dex).join(', ')} pools. The pools show varying activity levels with ${
-        liquidityAnalysis.totalPoolTrades
-      } total trades.`;
+      } pools, including ${liquidityAnalysis.liquidityDataAggregated.map((pool: any) => pool.dex).join(', ')}.`;
     }
 
     let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders, tokenArray);
     let { aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders);
 
-    // Generate summary
     const recentOrderDate = filteredActiveOrders.length
       ? new Date(
           Math.max(...filteredActiveOrders.map((order: any) => new Date(Number(order.timestampAdded)).getTime()))
@@ -143,42 +141,38 @@ Recent performance data for ${token} on ${network.toUpperCase()} shows ${
       new Set(filteredActiveOrders.map((order: any) => order.owner)).size
     } unique owners. The most recent order was placed on ${recentOrderDate}.
     
-In the past 24 hours, raindex supported ${totalTrades.toFixed(2)} tokens (${totalVolumeUsd.toFixed(
+In the past 24 hours, Raindex supported ${totalTrades.toFixed(2)} tokens (${totalVolumeUsd.toFixed(
       2
     )} USD) in trading volume. ${liquiditySummary}
 `;
 
-    // Combine all logs into a single Markdown string
     const markdownInput = `
-      # Network Analysis for ${network}
+# Network Analysis for ${network.toUpperCase()}
 
-      ## Raindex Order Metrics
-      \`\`\`
-      ${orderMetricsLogs.join('\n')}
-      \`\`\`
+## Raindex Order Metrics
+\`\`\`
+${orderMetricsLogs.join('\n')}
+\`\`\`
 
-      ## Raindex Vaults by Token
-      \`\`\`
-      ${tokenMetricsLogs.join('\n')}
-      \`\`\`
+## Raindex Vaults by Token
+\`\`\`
+${tokenMetricsLogs.join('\n')}
+\`\`\`
 
-      ## Raindex Trades by Order
-      \`\`\`
-      ${processOrderLogMessage.join('\n')}
-      \`\`\`
+## Raindex Trades by Order
+\`\`\`
+${processOrderLogMessage.join('\n')}
+\`\`\`
 
-      ## External Liquidity Analysis
-      \`\`\`
-      ${liquidityAnalysisLog.join('\n')}
-      \`\`\`
+## External Liquidity Analysis
+\`\`\`
+${liquidityAnalysisLog.join('\n')}
+\`\`\`
 
-      ## Summary
-      ${summarizedMessage}
-    `;
+## Summary
+${summarizedMessage}
+`;
 
-    console.log(markdownInput)
-
-    // Use ChatGPT API to format the logs into professional markdown
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
@@ -211,6 +205,7 @@ In the past 24 hours, raindex supported ${totalTrades.toFixed(2)} tokens (${tota
     }
   }
 }
+
 
 async function multiNetwork(token: string, network: string) {    
     const networkKeys: string[] = Object.keys(networkConfig);
