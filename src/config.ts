@@ -96,6 +96,11 @@ export const networkConfig: NetworkConfigurations = {
         address: '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619',
         symbol: 'WETH',
         decimals: 18
+      },
+      {
+        address: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270',
+        symbol: 'WPOL',
+        decimals: 18
       }
     ]
   },
