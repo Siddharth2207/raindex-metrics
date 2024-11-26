@@ -35,13 +35,13 @@ async function fetchAndFilterOrders(token: string , network: string, skip = 0, f
 
     // Filter orders where inputs.token.symbol or outputs.token.symbol matches the specified token
     const filteredActiveOrders = activeOrders.filter(order =>
-      order.inputs.some(input => input.token.symbol === tokenSymbol) ||
-      order.outputs.some(output => output.token.symbol === tokenSymbol)
+      order.inputs.some(input => input.token.symbol === tokenSymbol && input.token.address === tokenAddress) ||
+      order.outputs.some(output => output.token.symbol === tokenSymbol && output.token.address === tokenAddress)
     );
 
     const filteredInActiveOrders = inActiveOrders.filter(order =>
-      order.inputs.some(input => input.token.symbol === tokenSymbol) ||
-      order.outputs.some(output => output.token.symbol === tokenSymbol)
+      order.inputs.some(input => input.token.symbol === tokenSymbol && input.token.address === tokenAddress) ||
+      order.outputs.some(output => output.token.symbol === tokenSymbol && output.token.address === tokenAddress)
     );
 
     return {filteredActiveOrders, filteredInActiveOrders};

@@ -14,13 +14,13 @@ export const tokenConfig: Config = {
     decimals: 18,
     address: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270'
   },
-  QUICK_NEW: {
+  QUICK_OLD: {
     symbol: 'QUICK',
     network: 'polygon',
     decimals: 18,
     address: '0xb5c064f955d8e7f38fe0460c556a72987494ee17'
   },
-  QUICK_OLD: {
+  QUICK_NEW: {
     symbol: 'QUICK',
     network: 'polygon',
     decimals: 18,

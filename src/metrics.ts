@@ -173,8 +173,8 @@ function calculateVolumes(trades: any[], currentTimestamp: number) {
 
     // Initialize token entry if not present
     const initializeToken = (token: any) => {
-      if (!tokenVolumes[token.symbol]) {
-        tokenVolumes[token.symbol] = {
+      if (!tokenVolumes[token.address]) {
+        tokenVolumes[token.address] = {
           inVolume24h: ethers.BigNumber.from(0),
           outVolume24h: ethers.BigNumber.from(0),
           inVolumeWeek: ethers.BigNumber.from(0),
@@ -192,25 +192,25 @@ function calculateVolumes(trades: any[], currentTimestamp: number) {
     initializeToken(outputToken);
 
     // Add to all-time volumes
-    tokenVolumes[inputToken.symbol].inVolumeAllTime = tokenVolumes[inputToken.symbol].inVolumeAllTime.add(inputAmount);
-    tokenVolumes[outputToken.symbol].outVolumeAllTime = tokenVolumes[outputToken.symbol].outVolumeAllTime.add(outputAmount);
+    tokenVolumes[inputToken.address].inVolumeAllTime = tokenVolumes[inputToken.address].inVolumeAllTime.add(inputAmount);
+    tokenVolumes[outputToken.address].outVolumeAllTime = tokenVolumes[outputToken.address].outVolumeAllTime.add(outputAmount);
 
     // Add to 24-hour volumes
     if (timeDiff <= oneDayInSeconds) {
-      tokenVolumes[inputToken.symbol].inVolume24h = tokenVolumes[inputToken.symbol].inVolume24h.add(inputAmount);
-      tokenVolumes[outputToken.symbol].outVolume24h = tokenVolumes[outputToken.symbol].outVolume24h.add(outputAmount);
+      tokenVolumes[inputToken.address].inVolume24h = tokenVolumes[inputToken.address].inVolume24h.add(inputAmount);
+      tokenVolumes[outputToken.address].outVolume24h = tokenVolumes[outputToken.address].outVolume24h.add(outputAmount);
     }
 
     // Add to 1-week volumes
     if (timeDiff <= oneWeekInSeconds) {
-      tokenVolumes[inputToken.symbol].inVolumeWeek = tokenVolumes[inputToken.symbol].inVolumeWeek.add(inputAmount);
-      tokenVolumes[outputToken.symbol].outVolumeWeek = tokenVolumes[outputToken.symbol].outVolumeWeek.add(outputAmount);
+      tokenVolumes[inputToken.address].inVolumeWeek = tokenVolumes[inputToken.address].inVolumeWeek.add(inputAmount);
+      tokenVolumes[outputToken.address].outVolumeWeek = tokenVolumes[outputToken.address].outVolumeWeek.add(outputAmount);
     }
   });
 
   // Format volumes
-  return Object.entries(tokenVolumes).map(([symbol, data]) => {
-    const { inVolume24h, outVolume24h, inVolumeWeek, outVolumeWeek, inVolumeAllTime, outVolumeAllTime, decimals, address } = data;
+  return Object.entries(tokenVolumes).map(([tokenAddress, data]) => {
+    const { inVolume24h, outVolume24h, inVolumeWeek, outVolumeWeek, inVolumeAllTime, outVolumeAllTime, decimals, address, symbol } = data;
 
     const totalVolume24h = inVolume24h.add(outVolume24h);
     const totalVolumeWeek = inVolumeWeek.add(outVolumeWeek);
@@ -261,20 +261,20 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
         const decimals = volume.decimals;
         const address = volume.address;
 
-        if (!aggregatedVolumes[token]) {
-          aggregatedVolumes[token] = {
+        if (!aggregatedVolumes[address]) {
+          aggregatedVolumes[address] = {
             total24h: ethers.BigNumber.from(0),
             totalWeek: ethers.BigNumber.from(0),
             totalAllTime: ethers.BigNumber.from(0),
             decimals: decimals,
-            address: address,
+            address,
             symbol: token
           };
         }
 
-        aggregatedVolumes[token].total24h = aggregatedVolumes[token].total24h.add(ethers.utils.parseUnits(volume.totalVolume24h, decimals));
-        aggregatedVolumes[token].totalWeek = aggregatedVolumes[token].totalWeek.add(ethers.utils.parseUnits(volume.totalVolumeWeek, decimals));
-        aggregatedVolumes[token].totalAllTime = aggregatedVolumes[token].totalAllTime.add(ethers.utils.parseUnits(volume.totalVolumeAllTime, decimals));
+        aggregatedVolumes[address].total24h = aggregatedVolumes[address].total24h.add(ethers.utils.parseUnits(volume.totalVolume24h, decimals));
+        aggregatedVolumes[address].totalWeek = aggregatedVolumes[address].totalWeek.add(ethers.utils.parseUnits(volume.totalVolumeWeek, decimals));
+        aggregatedVolumes[address].totalAllTime = aggregatedVolumes[address].totalAllTime.add(ethers.utils.parseUnits(volume.totalVolumeAllTime, decimals));
       });
     } catch (error) {
       console.error(`Error processing order ${orderHash}:`, error);
@@ -304,8 +304,8 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
   processOrderLogMessage.push(`- Trade Distribution by Order: ${JSON.stringify(tradeDistribution, null, 2)}`);
 
   // Format aggregated volumes for printing
-  let aggregatedResults = Object.entries(aggregatedVolumes).map(([token, data]) => ({
-    token,
+  let aggregatedResults = Object.entries(aggregatedVolumes).map(([address, data]) => ({
+    token: data.symbol,
     address: data.address,
     decimals: data.decimals,
     symbol: data.symbol,
@@ -323,7 +323,7 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
   // Add aggregated volume metrics to processOrderLogMessage
   processOrderLogMessage.push(`Raindex Volume by Token and Total:`);
   aggregatedResults.forEach(entry => {
-    processOrderLogMessage.push(`- **Token**: ${entry.token}`);
+    processOrderLogMessage.push(`- **Token**: ${entry.token} - ${entry.address}`);
     processOrderLogMessage.push(`  - **Symbol**: ${entry.symbol}`);
     processOrderLogMessage.push(`  - **${entry.symbol} Currnet price**: ${entry.currentPrice} USD`);
 
@@ -395,7 +395,7 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
         item.total24hUsd = (parseFloat(item.total24h) * currentPrice).toString();
         item.totalWeekUsd = (parseFloat(item.totalWeek) * currentPrice).toString();
         item.totalAllTimeUsd = (parseFloat(item.totalAllTime) * currentPrice).toString();
-        item.currentPrice = currentPrice.toString();
+        item.currentPrice = (parseFloat(currentPrice.toString())).toString();
 
 
       } else {
