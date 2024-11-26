@@ -6,7 +6,6 @@ export const query = `
       orderDirection: desc
       skip: $skip
       first: $first
-      where: { active: true }
     ) {
       orderHash
       owner
@@ -39,19 +38,8 @@ export const query = `
       }
       active
       timestampAdded
-      trades {
+      trades(first: 1000) {
         id
-        inputVaultBalanceChange {
-          newVaultBalance
-          amount
-          oldVaultBalance
-        }
-        outputVaultBalanceChange {
-          amount
-          newVaultBalance
-          oldVaultBalance
-        }
-        timestamp
       }
     }
   }
@@ -63,6 +51,7 @@ export const tradeQuery = `query OrderTakesListQuery($orderHash: Bytes!, $skip: 
       orderHash: $orderHash
     }
   }) {
+    timestamp
     tradeEvent {
       transaction {
         id

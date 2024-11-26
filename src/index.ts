@@ -4,10 +4,224 @@ import { Variables, Order } from './types';
 import { query } from './queries';
 import { tokenConfig, networkConfig } from './config';
 import { hideBin } from 'yargs/helpers';
-import {orderMetrics, tokenMetrics, volumeMetrics} from './metrics'
+import {orderMetrics, tokenMetrics, volumeMetrics, analyzeLiquidity} from './metrics'
 import yargs from 'yargs';
 
 dotenv.config();
+const openaiToken = process.env.OPENAI_API_KEY as string;
+
+async function fetchAndFilterOrders(token: string , network: string, skip = 0, first = 1000): Promise<{ filteredActiveOrders: Order[]; filteredInActiveOrders: Order[] }> {
+  const variables: Variables = { skip, first };
+
+  const endpoint = networkConfig[network].subgraphUrl
+
+  try {
+    const response = await axios.post(endpoint, {
+      query,
+      variables,
+    });
+
+    const orders: Order[] = response.data.data.orders;
+    const activeOrders = orders.filter(order => order.active)
+    const inActiveOrders = orders.filter(order => !order.active)
+
+
+    if (token === "ALL") {
+      return { filteredActiveOrders: activeOrders, filteredInActiveOrders: inActiveOrders }; // Return all active orders without filtering
+    }
+    const {symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token] 
+
+    console.log(`Fetching orders for token: ${tokenSymbol} on network: ${network}`);
+
+    // Filter orders where inputs.token.symbol or outputs.token.symbol matches the specified token
+    const filteredActiveOrders = activeOrders.filter(order =>
+      order.inputs.some(input => input.token.symbol === tokenSymbol && input.token.address === tokenAddress) ||
+      order.outputs.some(output => output.token.symbol === tokenSymbol && output.token.address === tokenAddress)
+    );
+
+    const filteredInActiveOrders = inActiveOrders.filter(order =>
+      order.inputs.some(input => input.token.symbol === tokenSymbol && input.token.address === tokenAddress) ||
+      order.outputs.some(output => output.token.symbol === tokenSymbol && output.token.address === tokenAddress)
+    );
+
+    return {filteredActiveOrders, filteredInActiveOrders};
+
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error fetching orders:', error.message);
+    } else {
+      console.error('Unexpected error:', JSON.stringify(error));
+    }
+    throw error;
+  }
+}
+
+async function singleNetwork(token: string, network: string) {
+  try {
+    const { filteredActiveOrders, filteredInActiveOrders } = await fetchAndFilterOrders(token, network);
+
+    // Fetch logs
+    let orderMetricsLogs = await orderMetrics(filteredActiveOrders, filteredInActiveOrders);
+
+    let tokenArray = [];
+    let liquidityAnalysisLog: string[] = [];
+    let liquiditySummary = '';
+
+    if (token === 'ALL') {
+      const allTokens = new Map<string, { symbol: string; decimals: number; address: string }>();
+
+      filteredActiveOrders.forEach((order: any) => {
+        order.inputs.forEach((input: any) => {
+          allTokens.set(input.token.address, {
+            symbol: input.token.symbol,
+            decimals: Number(input.token.decimals),
+            address: input.token.address,
+          });
+        });
+        order.outputs.forEach((output: any) => {
+          allTokens.set(output.token.address, {
+            symbol: output.token.symbol,
+            decimals: Number(output.token.decimals),
+            address: output.token.address,
+          });
+        });
+      });
+
+      tokenArray = Array.from(allTokens.entries()).map(([addressKey, details]) => ({
+        addressKey,
+        ...details,
+      }));
+    } else {
+      const { symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token];
+      tokenArray.push({
+        symbol: tokenSymbol,
+        decimals: tokenDecimals,
+        address: tokenAddress,
+      });
+      tokenArray = [...tokenArray, ...networkConfig[network].stables];
+
+      const liquidityAnalysis = await analyzeLiquidity(tokenAddress);
+
+      liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
+      liquidityAnalysisLog.push(`- Total Pool Volume last 24 hours: ${liquidityAnalysis.totalPoolVolume} USD`);
+      liquidityAnalysisLog.push(`- Total Pool Trades last 24 hours: ${liquidityAnalysis.totalPoolTrades}`);
+      liquidityAnalysis.liquidityDataAggregated.forEach((pool: any) => {
+        liquidityAnalysisLog.push(`  - Dex: ${pool.dex}`);
+        liquidityAnalysisLog.push(`  - Pair Address: ${pool.pairAddress}`);
+        liquidityAnalysisLog.push(`  - Pool Volume: ${pool.totalPoolVolume} USD`);
+        liquidityAnalysisLog.push(`  - Pool Trades: ${pool.totalPoolTrades}`);
+        liquidityAnalysisLog.push(`  - Pool Size: ${pool.totalPoolSizeUsd} USD`);
+        liquidityAnalysisLog.push(`  - Base Token Liquidity: ${pool.poolBaseTokenLiquidity}`);
+        liquidityAnalysisLog.push(`  - Quote Token Liquidity: ${pool.poolQuoteTokenLiquidity}`);
+      });
+
+      liquiditySummary = `${tokenSymbol}'s trading activity represents about ${(liquidityAnalysis.totalPoolVolume / 10000).toFixed(
+        2
+      )}% of the total volume across ${
+        liquidityAnalysis.liquidityDataAggregated.length
+      } pools, including ${liquidityAnalysis.liquidityDataAggregated.map((pool: any) => pool.dex).join(', ')}.`;
+    }
+
+    let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders, tokenArray);
+    let { aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders);
+
+    const recentOrderDate = filteredActiveOrders.length
+      ? new Date(
+          Math.max(...filteredActiveOrders.map((order: any) => new Date(Number(order.timestampAdded)).getTime()))
+        ).toISOString()
+      : null;
+
+    const totalTrades = aggregatedResults.reduce((sum: any, entry: any) => sum + parseFloat(entry.total24h), 0);
+    const totalVolumeUsd = aggregatedResults.reduce((sum: any, entry: any) => sum + parseFloat(entry.total24hAveUsd), 0);
+
+    const summarizedMessage = `
+Recent performance data for ${token} on ${network.toUpperCase()} shows ${
+      filteredActiveOrders.length
+    } active orders managed by ${
+      new Set(filteredActiveOrders.map((order: any) => order.owner)).size
+    } unique owners. The most recent order was placed on ${recentOrderDate}.
+    
+In the past 24 hours, Raindex supported ${totalTrades.toFixed(2)} tokens (${totalVolumeUsd.toFixed(
+      2
+    )} USD) in trading volume. ${liquiditySummary}
+`;
+
+    const markdownInput = `
+# Network Analysis for ${network.toUpperCase()}
+
+## Raindex Order Metrics
+\`\`\`
+${orderMetricsLogs.join('\n')}
+\`\`\`
+
+## Raindex Vaults by Token
+\`\`\`
+${tokenMetricsLogs.join('\n')}
+\`\`\`
+
+## Raindex Trades by Order
+\`\`\`
+${processOrderLogMessage.join('\n')}
+\`\`\`
+
+## External Liquidity Analysis
+\`\`\`
+${liquidityAnalysisLog.join('\n')}
+\`\`\`
+
+## Summary
+${summarizedMessage}
+`;
+
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that formats logs into professional markdown reports.',
+          },
+          {
+            role: 'user',
+            content: `Please format the following content into a clean, professional markdown report:\n\n${markdownInput}`,
+          },
+        ],
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${openaiToken}`,
+        },
+      }
+    );
+
+    console.log(response.data.choices[0].message.content); // Formatted Markdown Log
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.error('Axios Error:', error.response?.data || error.message);
+    } else {
+      console.error('Unexpected Error:', error);
+    }
+  }
+}
+
+
+async function multiNetwork(token: string, network: string) {    
+    const networkKeys: string[] = Object.keys(networkConfig);
+    for(const network of networkKeys){
+      console.log(`--------------------------------------------------- ${network.toUpperCase()} ---------------------------------------------------`)
+      await singleNetwork(token, network)
+    }
+}
+
+async function analyzeOrders(token: string, network: string) {
+  if(token === "ALL" && network === "ALL"){ 
+    multiNetwork(token, network);
+  } else{
+    singleNetwork(token, network)
+  }
+}
 
 // Parse command-line arguments
 const argv = yargs(hideBin(process.argv))
@@ -29,101 +243,5 @@ const argv = yargs(hideBin(process.argv))
 
 // Extract token and network from arguments
 const { token, network } = argv;
-
-const endpoint = networkConfig[network].subgraphUrl
-
-async function fetchAndFilterOrders(skip = 0, first = 1000): Promise<Order[]> {
-  const variables: Variables = { skip, first };
-
-  try {
-    const response = await axios.post(endpoint, {
-      query,
-      variables,
-    });
-
-    const orders: Order[] = response.data.data.orders;
-
-    if (token === 'ALL') {
-      console.log(`Fetching orders for all tokens on network: ${network}`);
-      return orders; // Return all active orders without filtering
-    }
-    const {symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token] 
-
-    console.log(`Fetching orders for token: ${tokenSymbol} on network: ${network}`);
-
-    // Filter orders where inputs.token.symbol or outputs.token.symbol matches the specified token
-    const filteredOrders = orders.filter(order =>
-      order.inputs.some(input => input.token.symbol === tokenSymbol) ||
-      order.outputs.some(output => output.token.symbol === tokenSymbol)
-    );
-
-    return filteredOrders;
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error('Error fetching orders:', error.message);
-    } else {
-      console.error('Unexpected error:', JSON.stringify(error));
-    }
-    throw error; // Rethrow the error to ensure the function doesn't return undefined
-  }
-}
-
-async function analyzeOrders() {
-    try {
-        const filteredOrders = await fetchAndFilterOrders();
-
-        orderMetrics(filteredOrders) 
-
-        let tokenArray = []        
-
-        if (token === 'ALL') {
-          const allTokens = new Map<string, { symbol: string; decimals: number; address: string }>();
-
-          filteredOrders.forEach(order => {
-            order.inputs.forEach(input => {
-              allTokens.set(input.token.address, {
-                symbol: input.token.symbol,
-                decimals: Number(input.token.decimals),
-                address: input.token.address
-              });
-            });
-            order.outputs.forEach(output => {
-              allTokens.set(output.token.address, {
-                symbol: output.token.symbol,
-                decimals: Number(output.token.decimals),
-                address: output.token.address
-              });
-            });
-          });
-
-          // Convert the Map to an array if needed
-          tokenArray = Array.from(allTokens.entries()).map(([addressKey, details]) => ({
-            addressKey,
-            ...details,
-          }));
-    
-        } else {
-
-          const {symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token] 
-
-          tokenArray.push(
-            {
-              symbol: tokenSymbol,
-              decimals : tokenDecimals,
-              address: tokenAddress
-            }
-          )
-          tokenArray = [...tokenArray, ...networkConfig[network].stables];
-
-        }
-
-        tokenMetrics(filteredOrders,tokenArray)
-
-        volumeMetrics(endpoint, filteredOrders)
-
-    } catch (error) {
-        console.error('Error analyzing orders:', error);
-    }
-}
   
-analyzeOrders();
+analyzeOrders(token, network);

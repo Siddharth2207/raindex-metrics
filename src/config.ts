@@ -14,13 +14,13 @@ export const tokenConfig: Config = {
     decimals: 18,
     address: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270'
   },
-  QUICK_NEW: {
+  QUICK_OLD: {
     symbol: 'QUICK',
     network: 'polygon',
     decimals: 18,
     address: '0xb5c064f955d8e7f38fe0460c556a72987494ee17'
   },
-  QUICK_OLD: {
+  QUICK_NEW: {
     symbol: 'QUICK',
     network: 'polygon',
     decimals: 18,
@@ -96,6 +96,11 @@ export const networkConfig: NetworkConfigurations = {
         address: '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619',
         symbol: 'WETH',
         decimals: 18
+      },
+      {
+        address: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270',
+        symbol: 'WPOL',
+        decimals: 18
       }
     ]
   },
@@ -112,6 +117,11 @@ export const networkConfig: NetworkConfigurations = {
       {
         address: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
         symbol: 'WBNB',
+        decimals: 18
+      },
+      {
+        address: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+        symbol: 'USDC',
         decimals: 18
       }
     ]
