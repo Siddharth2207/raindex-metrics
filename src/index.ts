@@ -102,19 +102,23 @@ async function singleNetwork(token: string, network: string) {
       const liquidityAnalysis = await analyzeLiquidity(tokenAddress);
 
       liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
-      liquidityAnalysisLog.push(`- Total Pool Volume: ${liquidityAnalysis.totalPoolVolume}`);
-      liquidityAnalysisLog.push(`- Total Pool Trades: ${liquidityAnalysis.totalPoolTrades}`);
-      liquidityAnalysis.liquidityDataAggregated.forEach((pool) => {
+      liquidityAnalysisLog.push(`- Total Pool Volume last 24 hours: ${liquidityAnalysis.totalPoolVolume} USD`);
+      liquidityAnalysisLog.push(`- Total Pool Trades last 24 hours: ${liquidityAnalysis.totalPoolTrades}`);
+      liquidityAnalysis.liquidityDataAggregated.forEach((pool: any) => {
         liquidityAnalysisLog.push(`  - Dex: ${pool.dex}`);
         liquidityAnalysisLog.push(`  - Pair Address: ${pool.pairAddress}`);
-        liquidityAnalysisLog.push(`  - Pool Volume: ${pool.totalPoolVolume}`);
+        liquidityAnalysisLog.push(`  - Pool Volume: ${pool.totalPoolVolume} USD`);
         liquidityAnalysisLog.push(`  - Pool Trades: ${pool.totalPoolTrades}`);
+        liquidityAnalysisLog.push(`  - Pool Size: ${pool.totalPoolSizeUsd} USD`);
+        liquidityAnalysisLog.push(`  - Base Token Liquidity: ${pool.poolBaseTokenLiquidity}`);
+        liquidityAnalysisLog.push(`  - Quote Token Liquidity: ${pool.poolQuoteTokenLiquidity}`);
+
       });
 
       // Generate summary
       liquiditySummary = `${tokenSymbol}'s trading activity represents about ${(liquidityAnalysis.totalPoolVolume / 10000).toFixed(2)}% of the total volume across ${
         liquidityAnalysis.liquidityDataAggregated.length
-      } ${liquidityAnalysis.liquidityDataAggregated.map((pool) => pool.dex).join(', ')} pools. The pools show varying activity levels with ${
+      } ${liquidityAnalysis.liquidityDataAggregated.map((pool: any) => pool.dex).join(', ')} pools. The pools show varying activity levels with ${
         liquidityAnalysis.totalPoolTrades
       } total trades.`;
     }
@@ -148,22 +152,22 @@ In the past 24 hours, raindex supported ${totalTrades.toFixed(2)} tokens (${tota
     const markdownInput = `
       # Network Analysis for ${network}
 
-      ## Order Metrics
+      ## Raindex Order Metrics
       \`\`\`
       ${orderMetricsLogs.join('\n')}
       \`\`\`
 
-      ## Token Metrics
+      ## Raindex Vaults by Token
       \`\`\`
       ${tokenMetricsLogs.join('\n')}
       \`\`\`
 
-      ## Trade Metrics
+      ## Raindex Trades by Order
       \`\`\`
       ${processOrderLogMessage.join('\n')}
       \`\`\`
 
-      ## Liquidity Analysis
+      ## External Liquidity Analysis
       \`\`\`
       ${liquidityAnalysisLog.join('\n')}
       \`\`\`
@@ -171,6 +175,8 @@ In the past 24 hours, raindex supported ${totalTrades.toFixed(2)} tokens (${tota
       ## Summary
       ${summarizedMessage}
     `;
+
+    console.log(markdownInput)
 
     // Use ChatGPT API to format the logs into professional markdown
     const response = await axios.post(

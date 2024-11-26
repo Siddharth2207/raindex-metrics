@@ -53,6 +53,12 @@ export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): P
   for (const token of tokensArray) {
     const { symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = token;
 
+    const currentPriceData = await axios.get(
+      `https://api.dexscreener.io/latest/dex/search?q=${tokenAddress}`
+    );
+    const currentPrice = parseFloat(currentPriceData.data.pairs[0]?.priceUsd) || 0;
+
+
     const uniqueEntries = new Set<string>();
 
     const fundedOrders = filteredOrders.filter((order) => {
@@ -60,14 +66,14 @@ export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): P
 
       for (let i = 0; i < order.inputs.length; i++) {
         let inputVault = order.inputs[i];
-        if (inputVault.balance > 0) {
+        if (inputVault.token.symbol === tokenSymbol && inputVault.balance > 0) {
           inputsFunded = true;
         }
       }
 
       for (let i = 0; i < order.outputs.length; i++) {
         let outputVault = order.outputs[i];
-        if (outputVault.balance > 0) {
+        if (outputVault.token.symbol === tokenSymbol && outputVault.balance > 0) {
           outputsFunded = true;
         }
       }
@@ -103,7 +109,11 @@ export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): P
 
     const totalTokens = ethers.utils.formatUnits(totalInputs.add(totalOutputs), tokenDecimals);
 
+    logMessages.push(`Pirce ${tokenSymbol}: ${currentPrice}`);
+
     logMessages.push(`Total ${tokenSymbol}: ${totalTokens}`);
+    logMessages.push(`Value USD: ${parseFloat(totalTokens) * currentPrice}`);
+
     logMessages.push(`Count ${tokenSymbol} Vaults: ${totalInputsVaults.length + totalOutputsVaults.length}`);
   }
 
@@ -302,38 +312,45 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
     total24h: ethers.utils.formatUnits(data.total24h, data.decimals),
     totalWeek: ethers.utils.formatUnits(data.totalWeek, data.decimals),
     totalAllTime: ethers.utils.formatUnits(data.totalAllTime, data.decimals),
-    total24hAveUsd: 0,
+    total24hUsd: 0,
     totalWeekUsd: 0,
-    totalAllTimeUsd: 0
+    totalAllTimeUsd: 0,
+    currentPrice: 0
   }));
 
   aggregatedResults = await convertVolumesToUSD(aggregatedResults);
 
   // Add aggregated volume metrics to processOrderLogMessage
-  processOrderLogMessage.push(`Aggregated Volume Metrics:`);
+  processOrderLogMessage.push(`Raindex Volume by Token and Total:`);
   aggregatedResults.forEach(entry => {
     processOrderLogMessage.push(`- **Token**: ${entry.token}`);
     processOrderLogMessage.push(`  - **Symbol**: ${entry.symbol}`);
-    processOrderLogMessage.push(`  - **24h Volume**: $${entry.total24h}`);
-    processOrderLogMessage.push(`  - **Week Volume**: $${entry.totalWeek}`);
-    processOrderLogMessage.push(`  - **All Time Volume**: $${entry.totalAllTime}`);
-    processOrderLogMessage.push(`  - **24h Volume (USD)**: $${entry.total24hAveUsd}`);
-    processOrderLogMessage.push(`  - **Week Volume (USD)**: $${entry.totalWeekUsd}`);
-    processOrderLogMessage.push(`  - **All Time Volume (USD)**: $${entry.totalAllTimeUsd}`);
+    processOrderLogMessage.push(`  - **${entry.symbol} Currnet price**: ${entry.currentPrice} USD`);
+
+    processOrderLogMessage.push(`  - **24h Volume**: ${entry.total24h} ${entry.symbol}`);
+    processOrderLogMessage.push(`  - **Week Volume**: ${entry.totalWeek} ${entry.symbol}`);
+    processOrderLogMessage.push(`  - **All Time Volume**: ${entry.totalAllTime} ${entry.symbol}`);
+    processOrderLogMessage.push(`  - **24h Volume (USD)**: ${entry.total24hUsd} USD`);
+    processOrderLogMessage.push(`  - **Week Volume (USD)**: ${entry.totalWeekUsd} USD`);
+    processOrderLogMessage.push(`  - **All Time Volume (USD)**: ${entry.totalAllTimeUsd} USD`);
   });
 
   return { aggregatedResults, processOrderLogMessage };
 }
 
+interface TokenPrice {
+  averagePrice: number;
+  currentPrice: number;
+}
 
-async function fetchTokenPriceFromDexScreener(
+async function fetchAverageTokenPriceFromDexScreener(
   tokenAddress: string,
   tokenSymbol: string
-): Promise<number> {
+): Promise<TokenPrice> {
   try {
     const stablecoins = ["USDT", "USDC", "DAI", "BUSD"];
     if (stablecoins.some((stablecoin) => tokenSymbol.toUpperCase().includes(stablecoin))) {
-      return 1; // Return 1 for stablecoins
+      return { averagePrice: 1, currentPrice: 1 }; // Return 1 for stablecoins
     }
 
     const response = await axios.get(
@@ -352,16 +369,16 @@ async function fetchTokenPriceFromDexScreener(
 
         // Calculate the average price over the past 24 hours
         const averagePrice = (currentPrice + priceStart) / 2;
-        return averagePrice;
+        return { averagePrice, currentPrice };
       }
 
-      return currentPrice; // If no valid priceChange, return current price
+      return { averagePrice: currentPrice, currentPrice }; // If no valid priceChange, return current price
     }
 
-    return 0; // Return 0 if no data is found
+    return { averagePrice: 0, currentPrice: 0 }; // Return 0 if no data is found
   } catch (error) {
     console.error(`Error fetching price from DexScreener for token ${tokenAddress}:`, error);
-    return 0;
+    return { averagePrice: 0, currentPrice: 0 };
   }
 }
 
@@ -371,13 +388,14 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
       const tokenAddress = item.address;
 
       // Fetch the current price of the token
-      const tokenPrice = await fetchTokenPriceFromDexScreener(tokenAddress, item.symbol);
+      const {averagePrice, currentPrice} = await fetchAverageTokenPriceFromDexScreener(tokenAddress, item.symbol);
 
-      if (tokenPrice > 0) {
+      if (currentPrice > 0) {
         // Convert total volumes to USD
-        item.total24hAveUsd = (parseFloat(item.total24h) * tokenPrice).toString();
-        item.totalWeekUsd = (parseFloat(item.totalWeek) * tokenPrice).toString();
-        item.totalAllTimeUsd = (parseFloat(item.totalAllTime) * tokenPrice).toString();
+        item.total24hUsd = (parseFloat(item.total24h) * currentPrice).toString();
+        item.totalWeekUsd = (parseFloat(item.totalWeek) * currentPrice).toString();
+        item.totalAllTimeUsd = (parseFloat(item.totalAllTime) * currentPrice).toString();
+        item.currentPrice = currentPrice.toString();
 
 
       } else {
@@ -385,6 +403,7 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
         item.total24hUsd = 0;
         item.totalWeekUsd = 0;
         item.totalAllTimeUsd = 0;
+        item.currentPrice = 0;
 
       }
     }
@@ -406,6 +425,9 @@ async function fetchLiquidityData(tokenAddress: string): Promise<LiquidityPool[]
         trades24h: pair.txns?.h24?.buys + pair.txns?.h24?.sells || 0,
         pairAddress: pair.pairAddress,
         dex: pair.dexId,
+        poolSizeUsd: pair.liquidity.usd,
+        poolBaseTokenLiquidity: `${pair.liquidity.base} ${pair.baseToken.symbol}`,
+        poolQuoteTokenLiquidity: `${pair.liquidity.quote} ${pair.quoteToken.symbol}`
       }));
     }
     
@@ -418,7 +440,7 @@ async function fetchLiquidityData(tokenAddress: string): Promise<LiquidityPool[]
 
 export async function analyzeLiquidity(
   tokenAddress: string
-): Promise<LiquidityAnalysisResult> {
+): Promise<any> {
   const liquidityData = await fetchLiquidityData(tokenAddress);
 
   // Calculate total volumes and trades across all pools
@@ -432,12 +454,15 @@ export async function analyzeLiquidity(
       pairAddress: pool.pairAddress,
       totalPoolVolume: pool.volume24h.toFixed(2),
       totalPoolTrades: pool.trades24h,
+      totalPoolSizeUsd: pool.poolSizeUsd,
+      poolBaseTokenLiquidity: pool.poolBaseTokenLiquidity,
+      poolQuoteTokenLiquidity: pool.poolQuoteTokenLiquidity
     };
   });
 
   return {
     totalPoolVolume,
     totalPoolTrades,
-    liquidityDataAggregated,
+    liquidityDataAggregated
   };
 }

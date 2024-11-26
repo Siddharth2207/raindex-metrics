@@ -74,22 +74,31 @@ export type Config = Record<string, TokenConfig>;
 // Define the type for the networkConfig object
 export type NetworkConfigurations = Record<string, NetworkConfig>;
 
+// Define the LiquidityPool type to represent individual pool data
 export interface LiquidityPool {
     volume24h: number;
     trades24h: number;
     pairAddress: string;
     dex: string;
-  }
-  
+    poolSizeUsd: number;
+    poolBaseTokenLiquidity: string;
+    poolQuoteTokenLiquidity: string;
+}
+
+// Define the AggregatedLiquidityData type for processed liquidity data
 export interface AggregatedLiquidityData {
     dex: string;
     pairAddress: string;
     totalPoolVolume: string;
-    totalPoolTrades: number;
-  }
-  
-export  interface LiquidityAnalysisResult {
-    totalPoolVolume: number;
-    totalPoolTrades: number;
-    liquidityDataAggregated: AggregatedLiquidityData[];
-  }
+    totalPoolTrades: number; 
+    totalPoolSizeUsd: number; 
+    baseTokenLiquidity: string; 
+    quoteTokenLiquidity: string; 
+}
+
+
+export interface LiquidityAnalysisResult {
+    totalPoolVolume: number; 
+    totalPoolTrades: number; 
+    liquidityDataAggregated: AggregatedLiquidityData[]; 
+}
