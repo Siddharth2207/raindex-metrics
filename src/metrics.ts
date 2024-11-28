@@ -123,9 +123,9 @@ export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): P
 export async function volumeMetrics(network: string, filteredOrders: any[]): Promise<any> {
 
   const endpoint = networkConfig[network].subgraphUrl;
-  const { aggregatedResults, processOrderLogMessage } = await processOrdersWithAggregation(endpoint, filteredOrders);
+  const { totalTrades, tradesLast24Hours, tradesLastWeek, aggregatedResults, processOrderLogMessage } = await processOrdersWithAggregation(endpoint, filteredOrders);
 
-  return { aggregatedResults, processOrderLogMessage }
+  return { totalTrades, tradesLast24Hours, tradesLastWeek, aggregatedResults, processOrderLogMessage }
 }
 
 async function fetchTrades(endpoint: string, orderHash: string): Promise<any[]> {
@@ -233,7 +233,7 @@ function calculateVolumes(trades: any[], currentTimestamp: number) {
   });
 }
 
-async function processOrdersWithAggregation(endpoint: string, filteredOrders: any[]): Promise<{ aggregatedResults: any[]; processOrderLogMessage: string[] }> {
+async function processOrdersWithAggregation(endpoint: string, filteredOrders: any[]): Promise<{totalTrades: number, tradesLast24Hours: number, tradesLastWeek: number, aggregatedResults: any[]; processOrderLogMessage: string[] }> {
   const currentTimestamp = Math.floor(Date.now() / 1000);
   const aggregatedVolumes: Record<string, { total24h: ethers.BigNumber; totalWeek: ethers.BigNumber; totalAllTime: ethers.BigNumber; decimals: number; address: string, symbol: string }> = {};
 
@@ -335,7 +335,7 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
     processOrderLogMessage.push(`  - **All Time Volume (USD)**: ${entry.totalAllTimeUsd} USD`);
   });
 
-  return { aggregatedResults, processOrderLogMessage };
+  return { totalTrades, tradesLast24Hours, tradesLastWeek, aggregatedResults, processOrderLogMessage };
 }
 
 interface TokenPrice {

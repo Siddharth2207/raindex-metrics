@@ -66,6 +66,9 @@ async function singleNetwork(token: string, network: string) {
     let tokenArray = [];
     let liquidityAnalysisLog: string[] = [];
     let liquiditySummary = '';
+    let summarizedMessage = '';
+
+    let totalTokenExternal24hVolUsd, totalTokenExternal24hTrades
 
     if (token === 'ALL') {
       const allTokens = new Map<string, { symbol: string; decimals: number; address: string }>();
@@ -102,6 +105,9 @@ async function singleNetwork(token: string, network: string) {
 
       const liquidityAnalysis = await analyzeLiquidity(tokenAddress);
 
+      totalTokenExternal24hVolUsd = liquidityAnalysis.totalPoolVolume
+      totalTokenExternal24hTrades = liquidityAnalysis.totalPoolTrades
+
       liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
       liquidityAnalysisLog.push(`- Total Pool Volume last 24 hours: ${liquidityAnalysis.totalPoolVolume} USD`);
       liquidityAnalysisLog.push(`- Total Pool Trades last 24 hours: ${liquidityAnalysis.totalPoolTrades}`);
@@ -123,7 +129,7 @@ async function singleNetwork(token: string, network: string) {
     }
 
     let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders, tokenArray);
-    let { aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders);
+    let { totalTrades, tradesLast24Hours, tradesLastWeek,aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders);
 
     const recentOrderDate = filteredActiveOrders.length
       ? new Date(
@@ -131,21 +137,20 @@ async function singleNetwork(token: string, network: string) {
         ).toISOString()
       : null;
 
-    const totalTrades = aggregatedResults.reduce((sum: any, entry: any) => sum + parseFloat(entry.total24h), 0);
-    const totalVolumeUsd = aggregatedResults.reduce((sum: any, entry: any) => sum + parseFloat(entry.total24hAveUsd), 0);
-
-    const summarizedMessage = `
-Recent performance data for ${token} on ${network.toUpperCase()} shows ${
-      filteredActiveOrders.length
-    } active orders managed by ${
-      new Set(filteredActiveOrders.map((order: any) => order.owner)).size
-    } unique owners. The most recent order was placed on ${recentOrderDate}.
+    const totalVolumeUsd = aggregatedResults.reduce((sum: any, entry: any) => sum + parseFloat(entry.total24hUsd), 0);
     
-In the past 24 hours, Raindex supported ${totalTrades.toFixed(2)} tokens (${totalVolumeUsd.toFixed(
-      2
-    )} USD) in trading volume. ${liquiditySummary}
-`;
-
+    if (token !== 'ALL') {
+        summarizedMessage = `
+          Insight 1 : 
+          Total number of trades under raindex in last 24 hrs : ${tradesLast24Hours}
+          Total number of trades on external pools : ${totalTokenExternal24hTrades}
+          Total raindex token volume in last 24 hrs : ${totalVolumeUsd}
+          Total token volume for all pools : ${totalTokenExternal24hVolUsd}
+          Raindex trades as a % of total trades % = ${((tradesLast24Hours/totalTokenExternal24hTrades) * 100).toFixed(2)}
+          Raindex volume as a % of total volume % = ${((totalVolumeUsd/totalTokenExternal24hVolUsd) * 100).toFixed(2)}        
+      `
+    }
+    
     const markdownInput = `
 # Network Analysis for ${network.toUpperCase()}
 
