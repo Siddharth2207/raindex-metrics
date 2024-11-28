@@ -4,7 +4,7 @@ import { Variables, Order } from './types';
 import { query } from './queries';
 import { tokenConfig, networkConfig } from './config';
 import { hideBin } from 'yargs/helpers';
-import {orderMetrics, tokenMetrics, volumeMetrics, analyzeLiquidity} from './metrics'
+import {orderMetrics, tokenMetrics, volumeMetrics, analyzeLiquidity, calculateCombinedVaultBalance} from './metrics'
 import yargs from 'yargs';
 
 dotenv.config();
@@ -101,7 +101,7 @@ async function singleNetwork(token: string, network: string) {
         decimals: tokenDecimals,
         address: tokenAddress,
       });
-      tokenArray = [...tokenArray, ...networkConfig[network].stables];
+      tokenArray = [...tokenArray];
 
       const liquidityAnalysis = await analyzeLiquidity(tokenAddress);
 
@@ -129,6 +129,7 @@ async function singleNetwork(token: string, network: string) {
     }
 
     let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders, tokenArray);
+    let combinedBalance = await calculateCombinedVaultBalance(filteredActiveOrders);
     let { totalTrades, tradesLast24Hours, tradesLastWeek,aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders);
 
     const recentOrderDate = filteredActiveOrders.length
@@ -142,12 +143,17 @@ async function singleNetwork(token: string, network: string) {
     if (token !== 'ALL') {
         summarizedMessage = `
           Insight 1 : 
+          
           Total number of trades under raindex in last 24 hrs : ${tradesLast24Hours}
           Total number of trades on external pools : ${totalTokenExternal24hTrades}
           Total raindex token volume in last 24 hrs : ${totalVolumeUsd}
           Total token volume for all pools : ${totalTokenExternal24hVolUsd}
           Raindex trades as a % of total trades % = ${((tradesLast24Hours/totalTokenExternal24hTrades) * 100).toFixed(2)}
-          Raindex volume as a % of total volume % = ${((totalVolumeUsd/totalTokenExternal24hVolUsd) * 100).toFixed(2)}        
+          Raindex volume as a % of total volume % = ${((totalVolumeUsd/totalTokenExternal24hVolUsd) * 100).toFixed(2)}
+
+          Insight 2 : 
+          Current combined vault balance : ${combinedBalance}
+          Raindex volume as a % of vault balances : ${combinedBalance/totalVolumeUsd}     
       `
     }
     

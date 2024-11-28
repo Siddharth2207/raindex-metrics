@@ -47,6 +47,54 @@ export async function orderMetrics(filteredActiveOrders: any[], filteredInActive
   return logMessages
 }
 
+async function getTokenPriceUsd(tokenAddress: any) {
+  try {
+    const currentPriceData = await axios.get(
+      `https://api.dexscreener.io/latest/dex/search?q=${tokenAddress}`
+    );
+    const currentPrice = parseFloat(
+      currentPriceData.data.pairs[0]?.priceUsd
+    ) || 0;
+
+    return currentPrice;
+  } catch (error) {
+    console.error(`Error fetching price for token ${tokenAddress}:`, error);
+    return 0;
+  }
+}
+
+export async function calculateCombinedVaultBalance(orders: any) {
+  let combinedBalanceUsd = 0;
+
+  // Use a Set to track processed vault IDs
+  const processedVaultIds = new Set();
+
+  for (const order of orders) {
+    const vaults = [...order.inputs, ...order.outputs];
+
+    for (const vault of vaults) {
+      // Check if the vault ID has already been processed
+      if (processedVaultIds.has(vault.id)) continue;
+
+      // Mark the vault as processed
+      processedVaultIds.add(vault.id);
+
+      const tokenAddress = vault.token.address;
+      const tokenDecimals = parseInt(vault.token.decimals, 10);
+      const balance = ethers.utils.formatUnits(vault.balance, tokenDecimals);
+
+      // Fetch the price of the token in USD
+      const tokenPriceUsd = await getTokenPriceUsd(tokenAddress);
+
+      // Calculate the vault's balance in USD
+      const vaultBalanceUsd = parseFloat(balance) * tokenPriceUsd;
+      combinedBalanceUsd += vaultBalanceUsd;
+    }
+  }
+
+  return combinedBalanceUsd;
+}
+
 export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): Promise<string[]> {
   const logMessages: string[] = [];
 
@@ -57,7 +105,6 @@ export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): P
       `https://api.dexscreener.io/latest/dex/search?q=${tokenAddress}`
     );
     const currentPrice = parseFloat(currentPriceData.data.pairs[0]?.priceUsd) || 0;
-
 
     const uniqueEntries = new Set<string>();
 
