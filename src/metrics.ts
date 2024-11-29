@@ -2,7 +2,7 @@ import axios from 'axios';
 import { ethers } from 'ethers';
 import { tradeQuery } from './queries';
 import { networkConfig } from './config';
-import { LiquidityPool, AggregatedLiquidityData, LiquidityAnalysisResult } from './types';
+import { LiquidityPool, TokenPair, TokenPrice } from './types';
 
 const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
 const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -47,19 +47,67 @@ export async function orderMetrics(filteredActiveOrders: any[], filteredInActive
   return logMessages
 }
 
-async function getTokenPriceUsd(tokenAddress: any) {
+async function getTokenPriceUsd(tokenAddress: string): Promise<TokenPrice> {
   try {
-    const currentPriceData = await axios.get(
+    const response = await axios.get<{ pairs: TokenPair[] }>(
       `https://api.dexscreener.io/latest/dex/search?q=${tokenAddress}`
     );
-    const currentPrice = parseFloat(
-      currentPriceData.data.pairs[0]?.priceUsd
-    ) || 0;
 
-    return currentPrice;
-  } catch (error) {
-    console.error(`Error fetching price for token ${tokenAddress}:`, error);
-    return 0;
+    const pairs = response.data?.pairs || [];
+    if (pairs.length === 0) {
+      console.warn(`No pairs found for token ${tokenAddress}`);
+      return { averagePrice: 0, currentPrice: 0 };
+    }
+
+    let currentPrice = 0;
+    let averagePrice = 0;
+
+    // Handle WFLR special case
+    if (tokenAddress.toLowerCase() === '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d') {
+      const specialPair = pairs.find(
+        (pair) =>
+          pair.baseToken.address.toLowerCase() === '0x12e605bc104e93b45e1ad99f9e555f659051c2bb' &&
+          pair.quoteToken.address.toLowerCase() === '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d'
+      );
+
+      if (specialPair) {
+        currentPrice = parseFloat(specialPair.priceUsd) || 0;
+
+        const priceChange24h = parseFloat(specialPair.priceChange?.h24) || 0;
+        if (currentPrice > 0 && priceChange24h !== 0) {
+          const priceStart = currentPrice / (1 + priceChange24h / 100);
+          averagePrice = (currentPrice + priceStart) / 2;
+        } else {
+          averagePrice = currentPrice;
+        }
+
+        return { averagePrice, currentPrice };
+      } else {
+        console.warn(`Special pair not found for token ${tokenAddress}`);
+        return { averagePrice: 0, currentPrice: 0 };
+      }
+    }
+
+    // Default case: use the first pair
+    const firstPair = pairs[0];
+    currentPrice = parseFloat(firstPair?.priceUsd) || 0;
+
+    const priceChange24h = parseFloat(firstPair?.priceChange?.h24) || 0;
+    if (currentPrice > 0 && priceChange24h !== 0) {
+      const priceStart = currentPrice / (1 + priceChange24h / 100);
+      averagePrice = (currentPrice + priceStart) / 2;
+    } else {
+      averagePrice = currentPrice;
+    }
+
+    return { averagePrice, currentPrice };
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error(`Error fetching price for token ${tokenAddress}: ${error.message}`);
+    } else {
+      console.error(`Unexpected error fetching price for token ${tokenAddress}:`, error);
+    }
+    return { averagePrice: 0, currentPrice: 0 };
   }
 }
 
@@ -84,10 +132,10 @@ export async function calculateCombinedVaultBalance(orders: any) {
       const balance = ethers.utils.formatUnits(vault.balance, tokenDecimals);
 
       // Fetch the price of the token in USD
-      const tokenPriceUsd = await getTokenPriceUsd(tokenAddress);
+      const {currentPrice: currentTokenPrice} = await getTokenPriceUsd(tokenAddress);
 
       // Calculate the vault's balance in USD
-      const vaultBalanceUsd = parseFloat(balance) * tokenPriceUsd;
+      const vaultBalanceUsd = parseFloat(balance) * currentTokenPrice;
       combinedBalanceUsd += vaultBalanceUsd;
     }
   }
@@ -101,10 +149,7 @@ export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): P
   for (const token of tokensArray) {
     const { symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = token;
 
-    const currentPriceData = await axios.get(
-      `https://api.dexscreener.io/latest/dex/search?q=${tokenAddress}`
-    );
-    const currentPrice = parseFloat(currentPriceData.data.pairs[0]?.priceUsd) || 0;
+    const {currentPrice} = await getTokenPriceUsd(tokenAddress)
 
     const uniqueEntries = new Set<string>();
 
@@ -156,7 +201,7 @@ export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): P
 
     const totalTokens = ethers.utils.formatUnits(totalInputs.add(totalOutputs), tokenDecimals);
 
-    logMessages.push(`Pirce ${tokenSymbol}: ${currentPrice}`);
+    logMessages.push(`Price ${tokenSymbol}: ${currentPrice}`);
 
     logMessages.push(`Total ${tokenSymbol}: ${totalTokens}`);
     logMessages.push(`Value USD: ${parseFloat(totalTokens) * currentPrice}`);
@@ -385,57 +430,13 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
   return { totalTrades, tradesLast24Hours, tradesLastWeek, aggregatedResults, processOrderLogMessage };
 }
 
-interface TokenPrice {
-  averagePrice: number;
-  currentPrice: number;
-}
-
-async function fetchAverageTokenPriceFromDexScreener(
-  tokenAddress: string,
-  tokenSymbol: string
-): Promise<TokenPrice> {
-  try {
-    const stablecoins = ["USDT", "USDC", "DAI", "BUSD"];
-    if (stablecoins.some((stablecoin) => tokenSymbol.toUpperCase().includes(stablecoin))) {
-      return { averagePrice: 1, currentPrice: 1 }; // Return 1 for stablecoins
-    }
-
-    const response = await axios.get(
-      `https://api.dexscreener.io/latest/dex/search?q=${tokenAddress}`
-    );
-    const data = response.data;
-
-    if (data && data.pairs && data.pairs.length > 0) {
-      const pair = data.pairs[0]; // Use the first matching pair for simplicity
-      const currentPrice = parseFloat(pair?.priceUsd) || 0;
-      const priceChange24h = parseFloat(pair?.priceChange?.h24) || 0;
-
-      if (currentPrice > 0 && priceChange24h !== 0) {
-        // Calculate the price 24 hours ago
-        const priceStart = currentPrice / (1 + priceChange24h / 100);
-
-        // Calculate the average price over the past 24 hours
-        const averagePrice = (currentPrice + priceStart) / 2;
-        return { averagePrice, currentPrice };
-      }
-
-      return { averagePrice: currentPrice, currentPrice }; // If no valid priceChange, return current price
-    }
-
-    return { averagePrice: 0, currentPrice: 0 }; // Return 0 if no data is found
-  } catch (error) {
-    console.error(`Error fetching price from DexScreener for token ${tokenAddress}:`, error);
-    return { averagePrice: 0, currentPrice: 0 };
-  }
-}
-
 async function convertVolumesToUSD(data: any[]): Promise<any[]> {
   for (const item of data) {
     if (item.token && item.address) {
       const tokenAddress = item.address;
 
       // Fetch the current price of the token
-      const {averagePrice, currentPrice} = await fetchAverageTokenPriceFromDexScreener(tokenAddress, item.symbol);
+      const {averagePrice, currentPrice} = await getTokenPriceUsd(tokenAddress);
 
       if (currentPrice > 0) {
         // Convert total volumes to USD
