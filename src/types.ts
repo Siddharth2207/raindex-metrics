@@ -110,6 +110,7 @@ export interface TokenPair {
     quoteToken: {
       address: string;
     };
+    priceNative: string;
     priceUsd: string;
     priceChange: {
       h24: string;

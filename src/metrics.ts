@@ -63,16 +63,17 @@ async function getTokenPriceUsd(tokenAddress: string): Promise<TokenPrice> {
     let averagePrice = 0;
 
     // Handle WFLR special case
-    if (tokenAddress.toLowerCase() === '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d') {
+    if (tokenAddress.toLowerCase() === '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d') {      
       const specialPair = pairs.find(
         (pair) =>
-          pair.baseToken.address.toLowerCase() === '0x12e605bc104e93b45e1ad99f9e555f659051c2bb' &&
-          pair.quoteToken.address.toLowerCase() === '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d'
+          pair.baseToken.address.toLowerCase() === '0xfbda5f676cb37624f28265a144a48b0d6e87d3b6'.toLowerCase() &&
+          pair.quoteToken.address.toLowerCase() === '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d'.toLowerCase()
       );
 
       if (specialPair) {
-        currentPrice = parseFloat(specialPair.priceUsd) || 0;
 
+        currentPrice = (1/parseFloat(specialPair.priceNative)) || 0;
+      
         const priceChange24h = parseFloat(specialPair.priceChange?.h24) || 0;
         if (currentPrice > 0 && priceChange24h !== 0) {
           const priceStart = currentPrice / (1 + priceChange24h / 100);
