@@ -102,3 +102,22 @@ export interface LiquidityAnalysisResult {
     totalPoolTrades: number; 
     liquidityDataAggregated: AggregatedLiquidityData[]; 
 }
+
+export interface TokenPair {
+    baseToken: {
+      address: string;
+    };
+    quoteToken: {
+      address: string;
+    };
+    priceNative: string;
+    priceUsd: string;
+    priceChange: {
+      h24: string;
+    };
+  }
+  
+export  interface TokenPrice {
+    averagePrice: number;
+    currentPrice: number;
+  }

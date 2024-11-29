@@ -8,6 +8,12 @@ export const tokenConfig: Config = {
     network: 'polygon',
     address: '0xd0e9c8f5fae381459cf07ec506c1d2896e8b5df6'
   },
+  MNW: {
+    symbol: 'MNW',
+    decimals: 18,
+    network: 'polygon',
+    address: '0x3c59798620e5fec0ae6df1a19c6454094572ab92'
+  },
   WPOL: {
     symbol: 'WPOL',
     network: 'polygon',
