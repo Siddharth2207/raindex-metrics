@@ -76,13 +76,16 @@ export type NetworkConfigurations = Record<string, NetworkConfig>;
 
 // Define the LiquidityPool type to represent individual pool data
 export interface LiquidityPool {
-    volume24h: number;
-    trades24h: number;
-    pairAddress: string;
-    dex: string;
-    poolSizeUsd: number;
-    poolBaseTokenLiquidity: string;
-    poolQuoteTokenLiquidity: string;
+  volume24h: number;
+  trades24h: number;
+  pairAddress: string;
+  dex: string;
+  poolSizeUsd: number;
+  poolBaseTokenLiquidity: string;
+  poolQuoteTokenLiquidity: string;
+  h24Buys: number;
+  h24Sells: number;
+  priceChange24h: number;
 }
 
 // Define the AggregatedLiquidityData type for processed liquidity data
