@@ -80,6 +80,12 @@ export const tokenConfig: Config = {
     decimals: 18,
     address: '0x922d8563631b03c2c4cf817f4d18f6883aba0109'
   },
+  UMJA: {
+    symbol: 'UMJA',
+    network: 'arbitrum',
+    decimals: 18,
+    address: '0x16A500Aec6c37F84447ef04E66c57cfC6254cF92'
+  },
 };
 
 export const networkConfig: NetworkConfigurations = {
@@ -106,6 +112,23 @@ export const networkConfig: NetworkConfigurations = {
       {
         address: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270',
         symbol: 'WPOL',
+        decimals: 18
+      }
+    ]
+  },
+  arbitrum: {
+    chainId: 42161,
+    rpc: 'https://rpc.ankr.com/arbitrum',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-arbitrum/0.2/gn',
+    stables:[
+      {
+        address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+        symbol: 'USDC',
+        decimals: 6
+      },
+      {
+        address: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+        symbol: 'WETH',
         decimals: 18
       }
     ]
