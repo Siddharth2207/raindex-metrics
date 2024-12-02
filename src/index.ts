@@ -117,6 +117,9 @@ async function singleNetwork(token: string, network: string) {
         liquidityAnalysisLog.push(`  - Pool Volume: ${pool.totalPoolVolume} USD`);
         liquidityAnalysisLog.push(`  - Pool Trades: ${pool.totalPoolTrades}`);
         liquidityAnalysisLog.push(`  - Pool Size: ${pool.totalPoolSizeUsd} USD`);
+        liquidityAnalysisLog.push(`  - Buys: ${pool.h24Buys}`);
+        liquidityAnalysisLog.push(`  - Sell: ${pool.h24Sells}`);
+        liquidityAnalysisLog.push(`  - Price Change: ${pool.priceChange24h}`);
         liquidityAnalysisLog.push(`  - Base Token Liquidity: ${pool.poolBaseTokenLiquidity}`);
         liquidityAnalysisLog.push(`  - Quote Token Liquidity: ${pool.poolQuoteTokenLiquidity}`);
       });
@@ -130,7 +133,7 @@ async function singleNetwork(token: string, network: string) {
 
     let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders, tokenArray);
     let combinedBalance = await calculateCombinedVaultBalance(filteredActiveOrders);
-    let { totalTrades, tradesLast24Hours, tradesLastWeek,aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders);
+    let { tradesLast24Hours, aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders);
 
     const recentOrderDate = filteredActiveOrders.length
       ? new Date(
