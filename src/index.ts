@@ -156,7 +156,7 @@ async function singleNetwork(token: string, network: string) {
 
           Insight 2 : 
           Current combined vault balance : ${combinedBalance}
-          Raindex volume as a % of vault balances : ${combinedBalance/totalVolumeUsd}     
+          Raindex volume as a % of vault balances : ${totalVolumeUsd/combinedBalance}     
       `
     }
     
