@@ -131,7 +131,7 @@ async function singleNetwork(token: string, network: string) {
       } pools, including ${liquidityAnalysis.liquidityDataAggregated.map((pool: any) => pool.dex).join(', ')}.`;
     }
 
-    let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders, tokenArray);
+    let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders);
     let combinedBalance = await calculateCombinedVaultBalance(filteredActiveOrders);
     let { tradesLast24Hours, aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders);
 

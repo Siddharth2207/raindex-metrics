@@ -47,8 +47,15 @@ export async function orderMetrics(filteredActiveOrders: any[], filteredInActive
   return logMessages
 }
 
-async function getTokenPriceUsd(tokenAddress: string): Promise<TokenPrice> {
+async function getTokenPriceUsd(tokenAddress: string, tokenSymbol: string): Promise<TokenPrice> {
   try {
+
+    if (tokenSymbol.includes('USD')) {
+      return {
+        averagePrice: 1,
+        currentPrice: 1,
+      };
+    }
     const response = await axios.get<{ pairs: TokenPair[] }>(
       `https://api.dexscreener.io/latest/dex/search?q=${tokenAddress}`
     );
@@ -133,7 +140,7 @@ export async function calculateCombinedVaultBalance(orders: any) {
       const balance = ethers.utils.formatUnits(vault.balance, tokenDecimals);
 
       // Fetch the price of the token in USD
-      const {currentPrice: currentTokenPrice} = await getTokenPriceUsd(tokenAddress);
+      const {currentPrice: currentTokenPrice} = await getTokenPriceUsd(tokenAddress, vault.token.symbol);
 
       // Calculate the vault's balance in USD
       const vaultBalanceUsd = parseFloat(balance) * currentTokenPrice;
@@ -144,13 +151,40 @@ export async function calculateCombinedVaultBalance(orders: any) {
   return combinedBalanceUsd;
 }
 
-export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): Promise<string[]> {
+export async function tokenMetrics(filteredOrders: any[]): Promise<string[]> {
   const logMessages: string[] = [];
 
-  for (const token of tokensArray) {
+  // Extract all tokens from outputs and inputs
+  const allTokens = filteredOrders.flatMap(order =>
+    [...order.outputs, ...order.inputs].map(item => item.token)
+  );
+
+  // Create a Map to ensure unique tokens based on `address`
+  const uniqueTokensMap = new Map();
+
+  allTokens.forEach(token => {
+    if (!uniqueTokensMap.has(token.address)) {
+      uniqueTokensMap.set(token.address, {
+        address: token.address,
+        symbol: token.symbol,
+        decimals: token.decimals
+      });
+    }
+  });
+
+  // Convert the Map back to an array
+  const uniqueTokens = Array.from(uniqueTokensMap.values());
+
+  // Add table header
+  logMessages.push(
+    `| Symbol | Total Vaults | Total Tokens | Price (USD) | Value (USD) |`,
+    `|--------|--------------|--------------|-------------|-------------|`
+  );
+
+  for (const token of uniqueTokens) {
     const { symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = token;
 
-    const {currentPrice} = await getTokenPriceUsd(tokenAddress)
+    const { currentPrice } = await getTokenPriceUsd(tokenAddress, tokenSymbol);
 
     const uniqueEntries = new Set<string>();
 
@@ -173,8 +207,6 @@ export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): P
 
       return inputsFunded || outputsFunded || false;
     });
-
-    logMessages.push(`Funded Orders for ${tokenSymbol}: ${fundedOrders.length}`);
 
     const totalInputsVaults = filteredOrders
       .flatMap(order => order.inputs)
@@ -201,17 +233,18 @@ export async function tokenMetrics(filteredOrders: any[], tokensArray: any[]): P
     }, ethers.BigNumber.from(0));
 
     const totalTokens = ethers.utils.formatUnits(totalInputs.add(totalOutputs), tokenDecimals);
+    const totalVaults = uniqueEntries.size;
+    const totalValueUsd = parseFloat(totalTokens) * currentPrice;
 
-    logMessages.push(`Price ${tokenSymbol}: ${currentPrice}`);
-
-    logMessages.push(`Total ${tokenSymbol}: ${totalTokens}`);
-    logMessages.push(`Value USD: ${parseFloat(totalTokens) * currentPrice}`);
-
-    logMessages.push(`Count ${tokenSymbol} Vaults: ${totalInputsVaults.length + totalOutputsVaults.length}`);
+    // Add a row to the table
+    logMessages.push(
+      `| ${tokenSymbol} | ${totalVaults} | ${totalTokens} | ${currentPrice} | ${totalValueUsd} |`
+    );
   }
 
   return logMessages;
 }
+
 
 export async function volumeMetrics(network: string, filteredOrders: any[]): Promise<any> {
 
@@ -413,7 +446,7 @@ async function calculateTradeDistribution(
 
       const initializeToken = async (orderHash: string, token: any) => {
         if (!tokenVolumesPerOrder[orderHash][token.address]) {
-          const { currentPrice } = await getTokenPriceUsd(token.address);
+          const { currentPrice } = await getTokenPriceUsd(token.address, token.symbol);
 
           tokenVolumesPerOrder[orderHash][token.address] = {
             totalVolume24h: ethers.BigNumber.from(0),
@@ -593,7 +626,7 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
       const tokenAddress = item.address;
 
       // Fetch the current price of the token
-      const {averagePrice, currentPrice} = await getTokenPriceUsd(tokenAddress);
+      const {averagePrice, currentPrice} = await getTokenPriceUsd(tokenAddress, item.symbol);
 
       if (currentPrice > 0) {
         // Convert total volumes to USD
