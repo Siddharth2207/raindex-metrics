@@ -11,17 +11,19 @@ export async function orderMetrics(filteredActiveOrders: any[], filteredInActive
   const totalActiveOrders = filteredActiveOrders.length;
   const totalInActiveOrders = filteredInActiveOrders.length;
 
-  const uniqueOwners = new Set(filteredActiveOrders.map(order => order.owner)).size;
-  const lastOrderDate = filteredActiveOrders.length
+  const allOrders: any[] = filteredActiveOrders.concat(filteredInActiveOrders);
+
+  const uniqueOwners = new Set(allOrders.map(order => order.owner)).size;
+  const lastOrderDate = allOrders.length
     ? new Date(Math.max(
-      ...filteredActiveOrders.map(order => new Date(Number(order.timestampAdded)).getTime())
+      ...allOrders.map(order => new Date(Number(order.timestampAdded)).getTime())
     ) * 1000).toISOString()
     : null;
 
-  const ordersLast24Hours = filteredActiveOrders.filter(order =>
+  const ordersLast24Hours = allOrders.filter(order =>
     new Date(Number(order.timestampAdded) * 1000) >= last24Hours
   );
-  const ordersLastWeek = filteredActiveOrders.filter(order =>
+  const ordersLastWeek = allOrders.filter(order =>
     new Date(Number(order.timestampAdded) * 1000) >= lastWeek
   );
 
@@ -151,11 +153,12 @@ export async function calculateCombinedVaultBalance(orders: any) {
   return combinedBalanceUsd;
 }
 
-export async function tokenMetrics(filteredOrders: any[]): Promise<string[]> {
+export async function tokenMetrics(filteredActiveOrders: any[], filteredInActiveOrders: any[]): Promise<string[]> {
   const logMessages: string[] = [];
+  const allOrders: any[] = filteredActiveOrders.concat(filteredInActiveOrders);
 
   // Extract all tokens from outputs and inputs
-  const allTokens = filteredOrders.flatMap(order =>
+  const allTokens = allOrders.flatMap(order =>
     [...order.outputs, ...order.inputs].map(item => item.token)
   );
 
@@ -188,7 +191,7 @@ export async function tokenMetrics(filteredOrders: any[]): Promise<string[]> {
 
     const uniqueEntries = new Set<string>();
 
-    const fundedOrders = filteredOrders.filter((order) => {
+    const fundedOrders = filteredActiveOrders.filter((order) => {
       let inputsFunded, outputsFunded;
 
       for (let i = 0; i < order.inputs.length; i++) {
@@ -208,7 +211,9 @@ export async function tokenMetrics(filteredOrders: any[]): Promise<string[]> {
       return inputsFunded || outputsFunded || false;
     });
 
-    const totalInputsVaults = filteredOrders
+    logMessages.push(`Funded Active Orders for ${tokenSymbol}: ${fundedOrders.length}`);
+
+    const totalInputsVaults = allOrders
       .flatMap(order => order.inputs)
       .filter(input => input.token.address === tokenAddress);
 
@@ -218,7 +223,7 @@ export async function tokenMetrics(filteredOrders: any[]): Promise<string[]> {
       return sum.add(ethers.BigNumber.from(input.balance));
     }, ethers.BigNumber.from(0));
 
-    const totalOutputsVaults = filteredOrders
+    const totalOutputsVaults = allOrders
       .flatMap(order => order.outputs)
       .filter(output => output.token.address === tokenAddress);
 

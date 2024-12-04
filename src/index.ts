@@ -131,15 +131,9 @@ async function singleNetwork(token: string, network: string) {
       } pools, including ${liquidityAnalysis.liquidityDataAggregated.map((pool: any) => pool.dex).join(', ')}.`;
     }
 
-    let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders);
-    let combinedBalance = await calculateCombinedVaultBalance(filteredActiveOrders);
-    let { tradesLast24Hours, aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders);
-
-    const recentOrderDate = filteredActiveOrders.length
-      ? new Date(
-          Math.max(...filteredActiveOrders.map((order: any) => new Date(Number(order.timestampAdded)).getTime()))
-        ).toISOString()
-      : null;
+    let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders, filteredInActiveOrders);
+    let combinedBalance = await calculateCombinedVaultBalance(filteredActiveOrders.concat(filteredInActiveOrders));
+    let { tradesLast24Hours, aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders.concat(filteredInActiveOrders));
 
     const totalVolumeUsd = aggregatedResults.reduce((sum: any, entry: any) => sum + parseFloat(entry.total24hUsd), 0);
     
