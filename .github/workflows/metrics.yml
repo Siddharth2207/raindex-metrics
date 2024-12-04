@@ -1,4 +1,4 @@
-name: Raindex Metrics
+run-name: "Raindex Metrics: ${{ github.event.inputs.network }} - ${{ github.event.inputs.token }}"
 on:
   workflow_dispatch:
     inputs:
