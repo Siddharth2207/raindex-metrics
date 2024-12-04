@@ -1,4 +1,4 @@
-name: "Build and push ${{ github.event.inputs.network }} - "
+run-name: "Build and push ${{ github.event.inputs.network }} - ${{ github.event.inputs.token }}"
 on:
   workflow_dispatch:
     inputs:
