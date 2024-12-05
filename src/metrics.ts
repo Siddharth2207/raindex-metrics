@@ -153,12 +153,11 @@ export async function calculateCombinedVaultBalance(orders: any) {
   return combinedBalanceUsd;
 }
 
-export async function tokenMetrics(filteredActiveOrders: any[], filteredInActiveOrders: any[]): Promise<string[]> {
+export async function tokenMetrics(filteredActiveOrders: any[]): Promise<string[]> {
   const logMessages: string[] = [];
-  const allOrders: any[] = filteredActiveOrders.concat(filteredInActiveOrders);
 
   // Extract all tokens from outputs and inputs
-  const allTokens = allOrders.flatMap(order =>
+  const allTokens = filteredActiveOrders.flatMap(order =>
     [...order.outputs, ...order.inputs].map(item => item.token)
   );
 
@@ -213,7 +212,7 @@ export async function tokenMetrics(filteredActiveOrders: any[], filteredInActive
 
     logMessages.push(`Funded Active Orders for ${tokenSymbol}: ${fundedOrders.length}`);
 
-    const totalInputsVaults = allOrders
+    const totalInputsVaults = filteredActiveOrders
       .flatMap(order => order.inputs)
       .filter(input => input.token.address === tokenAddress);
 
@@ -223,7 +222,7 @@ export async function tokenMetrics(filteredActiveOrders: any[], filteredInActive
       return sum.add(ethers.BigNumber.from(input.balance));
     }, ethers.BigNumber.from(0));
 
-    const totalOutputsVaults = allOrders
+    const totalOutputsVaults = filteredActiveOrders
       .flatMap(order => order.outputs)
       .filter(output => output.token.address === tokenAddress);
 
@@ -333,9 +332,9 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
     .filter(trade => new Date(Number(trade.timestamp) * 1000) >= lastWeek).length;
 
   processOrderLogMessage.push(`Trade Metrics:`);
-  processOrderLogMessage.push(`- Total Trades: ${totalTrades}`);
   processOrderLogMessage.push(`- Trades in Last 24 Hours: ${tradesLast24Hours}`);
-  processOrderLogMessage.push(`- Trades in Last Week: ${tradesLastWeek}`);
+  processOrderLogMessage.push(`- Trades in Last Week (inc last 24 hours): ${tradesLastWeek}`);
+  processOrderLogMessage.push(`- Total Historical Trades: ${totalTrades}`);
   processOrderLogMessage.push(`- Trade Distribution in last 24h by Order: ${JSON.stringify(tradeDistributionLast24h, null, 2)}`);
   processOrderLogMessage.push(`- Volume Distribution in last 24h by Order: ${JSON.stringify(volumeDistributionLast24h, null, 2)}`);
 
