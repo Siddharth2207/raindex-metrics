@@ -12,7 +12,6 @@ on:
           - bsc
           - base
           - flare
-          - ALL
 
       token:
         description: 'TOKEN'
@@ -32,7 +31,6 @@ on:
           - QUICK_NEW
           - WFLR
           - sFLR
-          - ALL
 
 jobs:
   metrics:
