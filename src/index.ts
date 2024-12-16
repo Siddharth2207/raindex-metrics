@@ -107,24 +107,23 @@ async function singleNetwork(token: string, network: string) {
 
     const totalVolumeUsd = aggregatedResults.reduce((sum: any, entry: any) => sum + parseFloat(entry.total24hUsd), 0);
     
-    if (token !== 'ALL') {
-        summarizedMessage = `
-          Insight 1 : 
-          
-          Total Raindex trades last 24 hrs : ${tradesLast24Hours}
-          Total external trades last 24 hrs : ${totalTokenExternal24hTrades- tradesLast24Hours}
-          Total trades last 24 hrs : ${totalTokenExternal24hTrades}
-          Total Raindex token volume last 24 hrs : ${totalVolumeUsd}
-          Total external volume last 24 hrs : ${totalTokenExternal24hVolUsd-totalVolumeUsd}
-          Total  volume last 24 hrs : ${totalTokenExternal24hVolUsd}
-          Raindex trades as a % of total trades % = ${((tradesLast24Hours/totalTokenExternal24hTrades) * 100).toFixed(2)}
-          Raindex volume as a % of total volume % = ${((totalVolumeUsd/totalTokenExternal24hVolUsd) * 100).toFixed(2)}
+    summarizedMessage = `
+      Insight 1 : 
+      
+      Total Raindex trades last 24 hrs : ${tradesLast24Hours}
+      Total external trades last 24 hrs : ${totalTokenExternal24hTrades- tradesLast24Hours}
+      Total trades last 24 hrs : ${totalTokenExternal24hTrades}
+      Total Raindex token volume last 24 hrs : ${totalVolumeUsd}
+      Total external volume last 24 hrs : ${totalTokenExternal24hVolUsd-totalVolumeUsd}
+      Total  volume last 24 hrs : ${totalTokenExternal24hVolUsd}
+      Raindex trades as a % of total trades % = ${((tradesLast24Hours/totalTokenExternal24hTrades) * 100).toFixed(2)}
+      Raindex volume as a % of total volume % = ${((totalVolumeUsd/totalTokenExternal24hVolUsd) * 100).toFixed(2)}
 
-          Insight 2 : 
-          Current value vault balances in USD : ${combinedBalance}
-          Raindex daily volume as a % of vault balance : ${totalVolumeUsd/combinedBalance}     
-      `
-    }
+      Insight 2 : 
+      Current value vault balances in USD : ${combinedBalance}
+      Raindex daily volume as a % of vault balance : ${totalVolumeUsd/combinedBalance}     
+    `
+    
     
     const markdownInput = `
 # Network Analysis for ${network.toUpperCase()}
