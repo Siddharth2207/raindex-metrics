@@ -25,10 +25,6 @@ async function fetchAndFilterOrders(token: string , network: string, skip = 0, f
     const activeOrders = orders.filter(order => order.active)
     const inActiveOrders = orders.filter(order => !order.active)
 
-
-    if (token === "ALL") {
-      return { filteredActiveOrders: activeOrders, filteredInActiveOrders: inActiveOrders }; // Return all active orders without filtering
-    }
     const {symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token] 
 
     console.log(`Fetching orders for token: ${tokenSymbol} on network: ${network}`);
@@ -60,7 +56,6 @@ async function singleNetwork(token: string, network: string) {
   try {
     const { filteredActiveOrders, filteredInActiveOrders } = await fetchAndFilterOrders(token, network);
 
-    // Fetch logs
     let orderMetricsLogs = await orderMetrics(filteredActiveOrders, filteredInActiveOrders);
 
     let tokenArray = [];
@@ -70,66 +65,41 @@ async function singleNetwork(token: string, network: string) {
 
     let totalTokenExternal24hVolUsd, totalTokenExternal24hTrades
 
-    if (token === 'ALL') {
-      const allTokens = new Map<string, { symbol: string; decimals: number; address: string }>();
+    const { symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token];
+    tokenArray.push({
+      symbol: tokenSymbol,
+      decimals: tokenDecimals,
+      address: tokenAddress,
+    });
+    tokenArray = [...tokenArray];
 
-      filteredActiveOrders.forEach((order: any) => {
-        order.inputs.forEach((input: any) => {
-          allTokens.set(input.token.address, {
-            symbol: input.token.symbol,
-            decimals: Number(input.token.decimals),
-            address: input.token.address,
-          });
-        });
-        order.outputs.forEach((output: any) => {
-          allTokens.set(output.token.address, {
-            symbol: output.token.symbol,
-            decimals: Number(output.token.decimals),
-            address: output.token.address,
-          });
-        });
-      });
+    const liquidityAnalysis = await analyzeLiquidity(tokenAddress);
 
-      tokenArray = Array.from(allTokens.entries()).map(([addressKey, details]) => ({
-        addressKey,
-        ...details,
-      }));
-    } else {
-      const { symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token];
-      tokenArray.push({
-        symbol: tokenSymbol,
-        decimals: tokenDecimals,
-        address: tokenAddress,
-      });
-      tokenArray = [...tokenArray];
+    totalTokenExternal24hVolUsd = liquidityAnalysis.totalPoolVolume
+    totalTokenExternal24hTrades = liquidityAnalysis.totalPoolTrades
 
-      const liquidityAnalysis = await analyzeLiquidity(tokenAddress);
+    liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
+    liquidityAnalysisLog.push(`- Total Pool Trades last 24 hours: ${liquidityAnalysis.totalPoolTrades}`);
+    liquidityAnalysisLog.push(`- Total Pool Volume last 24 hours: ${liquidityAnalysis.totalPoolVolume} USD`);
+    liquidityAnalysis.liquidityDataAggregated.forEach((pool: any) => {
+      liquidityAnalysisLog.push(`  - Dex: ${pool.dex}`);
+      liquidityAnalysisLog.push(`  - Pair Address: ${pool.pairAddress}`);
+      liquidityAnalysisLog.push(`  - Pool Volume: ${pool.totalPoolVolume} USD`);
+      liquidityAnalysisLog.push(`  - Pool Trades: ${pool.totalPoolTrades}`);
+      liquidityAnalysisLog.push(`  - Pool Size: ${pool.totalPoolSizeUsd} USD`);
+      liquidityAnalysisLog.push(`  - Buys: ${pool.h24Buys}`);
+      liquidityAnalysisLog.push(`  - Sell: ${pool.h24Sells}`);
+      liquidityAnalysisLog.push(`  - Price Change: ${pool.priceChange24h}`);
+      liquidityAnalysisLog.push(`  - Base Token Liquidity: ${pool.poolBaseTokenLiquidity}`);
+      liquidityAnalysisLog.push(`  - Quote Token Liquidity: ${pool.poolQuoteTokenLiquidity}`);
+    });
 
-      totalTokenExternal24hVolUsd = liquidityAnalysis.totalPoolVolume
-      totalTokenExternal24hTrades = liquidityAnalysis.totalPoolTrades
-
-      liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
-      liquidityAnalysisLog.push(`- Total Pool Trades last 24 hours: ${liquidityAnalysis.totalPoolTrades}`);
-      liquidityAnalysisLog.push(`- Total Pool Volume last 24 hours: ${liquidityAnalysis.totalPoolVolume} USD`);
-      liquidityAnalysis.liquidityDataAggregated.forEach((pool: any) => {
-        liquidityAnalysisLog.push(`  - Dex: ${pool.dex}`);
-        liquidityAnalysisLog.push(`  - Pair Address: ${pool.pairAddress}`);
-        liquidityAnalysisLog.push(`  - Pool Volume: ${pool.totalPoolVolume} USD`);
-        liquidityAnalysisLog.push(`  - Pool Trades: ${pool.totalPoolTrades}`);
-        liquidityAnalysisLog.push(`  - Pool Size: ${pool.totalPoolSizeUsd} USD`);
-        liquidityAnalysisLog.push(`  - Buys: ${pool.h24Buys}`);
-        liquidityAnalysisLog.push(`  - Sell: ${pool.h24Sells}`);
-        liquidityAnalysisLog.push(`  - Price Change: ${pool.priceChange24h}`);
-        liquidityAnalysisLog.push(`  - Base Token Liquidity: ${pool.poolBaseTokenLiquidity}`);
-        liquidityAnalysisLog.push(`  - Quote Token Liquidity: ${pool.poolQuoteTokenLiquidity}`);
-      });
-
-      liquiditySummary = `${tokenSymbol}'s trading activity represents about ${(liquidityAnalysis.totalPoolVolume / 10000).toFixed(
-        2
-      )}% of the total volume across ${
-        liquidityAnalysis.liquidityDataAggregated.length
-      } pools, including ${liquidityAnalysis.liquidityDataAggregated.map((pool: any) => pool.dex).join(', ')}.`;
-    }
+    liquiditySummary = `${tokenSymbol}'s trading activity represents about ${(liquidityAnalysis.totalPoolVolume / 10000).toFixed(
+      2
+    )}% of the total volume across ${
+      liquidityAnalysis.liquidityDataAggregated.length
+    } pools, including ${liquidityAnalysis.liquidityDataAggregated.map((pool: any) => pool.dex).join(', ')}.`;
+    
 
     let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders);
     let combinedBalance = await calculateCombinedVaultBalance(filteredActiveOrders.concat(filteredInActiveOrders));
@@ -137,24 +107,23 @@ async function singleNetwork(token: string, network: string) {
 
     const totalVolumeUsd = aggregatedResults.reduce((sum: any, entry: any) => sum + parseFloat(entry.total24hUsd), 0);
     
-    if (token !== 'ALL') {
-        summarizedMessage = `
-          Insight 1 : 
-          
-          Total Raindex trades last 24 hrs : ${tradesLast24Hours}
-          Total external trades last 24 hrs : ${totalTokenExternal24hTrades- tradesLast24Hours}
-          Total trades last 24 hrs : ${totalTokenExternal24hTrades}
-          Total Raindex token volume last 24 hrs : ${totalVolumeUsd}
-          Total external volume last 24 hrs : ${totalTokenExternal24hVolUsd-totalVolumeUsd}
-          Total  volume last 24 hrs : ${totalTokenExternal24hVolUsd}
-          Raindex trades as a % of total trades % = ${((tradesLast24Hours/totalTokenExternal24hTrades) * 100).toFixed(2)}
-          Raindex volume as a % of total volume % = ${((totalVolumeUsd/totalTokenExternal24hVolUsd) * 100).toFixed(2)}
+    summarizedMessage = `
+      Insight 1 : 
+      
+      Total Raindex trades last 24 hrs : ${tradesLast24Hours}
+      Total external trades last 24 hrs : ${totalTokenExternal24hTrades- tradesLast24Hours}
+      Total trades last 24 hrs : ${totalTokenExternal24hTrades}
+      Total Raindex token volume last 24 hrs : ${totalVolumeUsd}
+      Total external volume last 24 hrs : ${totalTokenExternal24hVolUsd-totalVolumeUsd}
+      Total  volume last 24 hrs : ${totalTokenExternal24hVolUsd}
+      Raindex trades as a % of total trades % = ${((tradesLast24Hours/totalTokenExternal24hTrades) * 100).toFixed(2)}
+      Raindex volume as a % of total volume % = ${((totalVolumeUsd/totalTokenExternal24hVolUsd) * 100).toFixed(2)}
 
-          Insight 2 : 
-          Current value vault balances in USD : ${combinedBalance}
-          Raindex daily volume as a % of vault balance : ${totalVolumeUsd/combinedBalance}     
-      `
-    }
+      Insight 2 : 
+      Current value vault balances in USD : ${combinedBalance}
+      Raindex daily volume as a % of vault balance : ${totalVolumeUsd/combinedBalance}     
+    `
+    
     
     const markdownInput = `
 # Network Analysis for ${network.toUpperCase()}
@@ -216,21 +185,8 @@ ${summarizedMessage}
   }
 }
 
-
-async function multiNetwork(token: string, network: string) {    
-    const networkKeys: string[] = Object.keys(networkConfig);
-    for(const network of networkKeys){
-      console.log(`--------------------------------------------------- ${network.toUpperCase()} ---------------------------------------------------`)
-      await singleNetwork(token, network)
-    }
-}
-
 async function analyzeOrders(token: string, network: string) {
-  if(token === "ALL" && network === "ALL"){ 
-    multiNetwork(token, network);
-  } else{
-    singleNetwork(token, network)
-  }
+  singleNetwork(token, network)
 }
 
 // Parse command-line arguments
@@ -238,7 +194,7 @@ const argv = yargs(hideBin(process.argv))
   .option('token', {
     alias: 't',
     type: 'string',
-    description: 'The token symbol (e.g., IOEN, TFT, or ALL)',
+    description: 'The token symbol (e.g., IOEN, TFT)',
     demandOption: true,
   })
   .option('network', {

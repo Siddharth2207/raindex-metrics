@@ -92,7 +92,7 @@ export const networkConfig: NetworkConfigurations = {
   polygon: {
     chainId: 137,
     rpc: 'https://rpc.ankr.com/polygon',
-    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-polygon/0.6/gn',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-matic/2024-12-13-d2b4/gn',
     stables:[
       {
         address: '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
@@ -119,7 +119,7 @@ export const networkConfig: NetworkConfigurations = {
   arbitrum: {
     chainId: 42161,
     rpc: 'https://rpc.ankr.com/arbitrum',
-    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-arbitrum/0.2/gn',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-arbitrum-one/2024-12-13-7435/gn',
     stables:[
       {
         address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
@@ -136,7 +136,7 @@ export const networkConfig: NetworkConfigurations = {
   bsc: {
     chainId: 56,
     rpc: 'https://rpc.ankr.com/bsc',
-    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-bsc/2024-10-14-63f4/gn',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-bsc/2024-12-13-2244/gn',
     stables:[
       {
         address: '0xe9e7cea3dedca5984780bafc599bd69add087d56',
@@ -158,7 +158,7 @@ export const networkConfig: NetworkConfigurations = {
   base: {
     chainId: 8453,
     rpc: 'https://mainnet.base.org',
-    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-base/0.9/gn',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-base/2024-12-13-9c39/gn',
     stables:[
       {
         address: '0x4200000000000000000000000000000000000006',
@@ -175,13 +175,13 @@ export const networkConfig: NetworkConfigurations = {
   flare: {
     chainId: 14,
     rpc: 'https://rpc.ankr.com/flare',
-    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-flare/0.8/gn',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-flare/2024-12-13-9dc7/gn',
     stables:[]
   },
   mainnet: {
     chainId: 1,
     rpc: 'https://rpc.ankr.com/eth',
-    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-mainnet/2024-10-25-af6a/gn',
+    subgraphUrl: 'https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-mainnet/2024-12-13-7f22/gn',
     stables:[
       {
         address: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
