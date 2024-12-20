@@ -38,6 +38,18 @@ export const tokenConfig: Config = {
     network: 'bsc',
     address: '0x8f0fb159380176d324542b3a7933f0c2fd0c2bbf'
   },
+  cysFLR: {
+    symbol: 'cysFLR',
+    decimals: 18,
+    network: 'flare',
+    address: '0x19831cfb53a0dbead9866c43557c1d48dff76567'
+  },
+  cUSDX: {
+    symbol: 'cUSDX',
+    decimals: 6,
+    network: 'flare',
+    address: '0xfe2907dfa8db6e320cdbf45f0aa888f6135ec4f8'
+  },
   PAID: {
     symbol: 'PAID',
     network: 'base',
