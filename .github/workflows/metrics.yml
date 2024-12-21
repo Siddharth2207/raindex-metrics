@@ -78,5 +78,5 @@ jobs:
       - name: Upload markdown file
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ github.event.inputs.network }}-${{ github.event.inputs.token }}-${{ env.run_datetime }}.md
+          name: ${{ github.event.inputs.network }}-${{ github.event.inputs.token }}.md
           path: output.md 
