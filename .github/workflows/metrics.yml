@@ -76,7 +76,8 @@ jobs:
         run: nix develop -c raindex-metrics > output.md         
 
       - name: Upload markdown file
+        run: echo "run_datetime=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
         uses: actions/upload-artifact@v3
         with:
-          name: ci-output-${{ github.run_id }}.md
+          name: ${{ github.event.inputs.network }}-${{ github.event.inputs.token }}-${{ env.run_datetime }}.md
           path: output.md 
