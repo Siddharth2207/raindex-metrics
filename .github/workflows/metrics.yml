@@ -75,7 +75,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           echo "RUN_DATETIME=$(date -u '+%Y-%m-%d-%H-%M-%S-UTC')" >> $GITHUB_ENV
-          nix develop -c raindex-metrics > $NETWORK-$TOKEN_SYMBOL-$RUN_DATETIME.md
+          echo "NETWORK=$NETWORK"
+          echo "TOKEN_SYMBOL=$TOKEN_SYMBOL"
+          echo "RUN_DATETIME=$RUN_DATETIME"
+          nix develop -c raindex-metrics > ./$NETWORK-$TOKEN_SYMBOL-$RUN_DATETIME.md
 
       - name: Upload markdown file
         uses: actions/upload-artifact@v3
