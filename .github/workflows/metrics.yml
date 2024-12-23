@@ -73,10 +73,17 @@ jobs:
           TOKEN_SYMBOL: ${{ inputs.token }}
           NETWORK: ${{ inputs.network }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: nix develop -c raindex-metrics > output.md         
+        run: |
+          RUN_DATETIME=$(date -u '+%Y-%m-%d-%H-%M-%S-UTC')
+          echo "RUN_DATETIME=$(date -u '+%Y-%m-%d-%H-%M-%S-UTC')" >> $GITHUB_ENV
+          echo "NETWORK=$NETWORK"
+          echo "TOKEN_SYMBOL=$TOKEN_SYMBOL"
+          echo "RUN_DATETIME=$RUN_DATETIME"
+          nix develop -c raindex-metrics > ./$NETWORK-$TOKEN_SYMBOL-$RUN_DATETIME.md
 
       - name: Upload markdown file
         uses: actions/upload-artifact@v3
         with:
-          name: ci-output-${{ github.run_id }}.md
-          path: output.md 
+          name: ${{ inputs.network }}-${{ inputs.token }}-${{ env.RUN_DATETIME }}.md
+          path: ${{ inputs.network }}-${{ inputs.token }}-${{ env.RUN_DATETIME }}.md
+
