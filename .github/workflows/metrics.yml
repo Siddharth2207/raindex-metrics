@@ -74,6 +74,7 @@ jobs:
           NETWORK: ${{ inputs.network }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
+          RUN_DATETIME=$(date -u '+%Y-%m-%d-%H-%M-%S-UTC')
           echo "RUN_DATETIME=$(date -u '+%Y-%m-%d-%H-%M-%S-UTC')" >> $GITHUB_ENV
           echo "NETWORK=$NETWORK"
           echo "TOKEN_SYMBOL=$TOKEN_SYMBOL"
