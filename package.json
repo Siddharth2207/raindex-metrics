@@ -9,6 +9,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@envio-dev/hypersync-client": "^0.6.3",
     "@types/yargs": "^17.0.33",
     "axios": "=1.7.7",
     "dotenv": "=16.4.5",
