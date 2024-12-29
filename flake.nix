@@ -26,12 +26,13 @@
             name = "raindex-metrics";
             body = ''
               set -euxo pipefail
-              if [ -z "''${TOKEN_SYMBOL}" ] || [ -z "''${NETWORK}" ]; then
-                echo "Error: TOKEN_SYMBOL and NETWORK environment variables must be set."
+              if [ -z "''${TOKEN_SYMBOL}" ] || [ -z "''${NETWORK}" ] || [ -z "''${DURATION}" ]; then
+                echo "Error: TOKEN_SYMBOL, NETWORK, and DURATION environment variables must be set."
                 exit 1
               fi
-              echo "Running raindex-metrics with TOKEN_SYMBOL="''${TOKEN_SYMBOL}" and NETWORK="''${NETWORK}""
-              node dist/index.js --token "''${TOKEN_SYMBOL}" --network "''${NETWORK}"
+              echo "Running raindex-metrics with TOKEN_SYMBOL="''${TOKEN_SYMBOL}" NETWORK="''${NETWORK}" and DURATION="''${DURATION}""
+              node dist/index.js --token "''${TOKEN_SYMBOL}" --network "''${NETWORK}" --duration "''${DURATION}"
+
             '';
           };
 
