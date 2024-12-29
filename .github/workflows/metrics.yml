@@ -32,6 +32,15 @@ on:
           - WFLR
           - sFLR
           - cysFLR
+      
+      duration:
+        description: 'Duration for metrics'
+        required: true
+        type: choice
+        options:
+          - daily
+          - weekly
+          - monthly
 
 jobs:
   metrics:
@@ -72,18 +81,20 @@ jobs:
         env:
           TOKEN_SYMBOL: ${{ inputs.token }}
           NETWORK: ${{ inputs.network }}
+          DURATION: ${{ inputs.duration }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           RUN_DATETIME=$(date -u '+%Y-%m-%d-%H-%M-%S-UTC')
           echo "RUN_DATETIME=$(date -u '+%Y-%m-%d-%H-%M-%S-UTC')" >> $GITHUB_ENV
           echo "NETWORK=$NETWORK"
           echo "TOKEN_SYMBOL=$TOKEN_SYMBOL"
+          echo "DURATION=$DURATION"
           echo "RUN_DATETIME=$RUN_DATETIME"
-          nix develop -c raindex-metrics > ./$NETWORK-$TOKEN_SYMBOL-$RUN_DATETIME.md
+          nix develop -c raindex-metrics > ./$NETWORK-$TOKEN_SYMBOL-$DURATION-$RUN_DATETIME.md
 
       - name: Upload markdown file
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ inputs.network }}-${{ inputs.token }}-${{ env.RUN_DATETIME }}.md
-          path: ${{ inputs.network }}-${{ inputs.token }}-${{ env.RUN_DATETIME }}.md
+          name: ${{ inputs.network }}-${{ inputs.token }}-${{ inputs.duration }}-${{ env.RUN_DATETIME }}.md
+          path: ${{ inputs.network }}-${{ inputs.token }}-${{ inputs.duration }}-${{ env.RUN_DATETIME }}.md
 
