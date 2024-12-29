@@ -52,76 +52,47 @@ async function fetchAndFilterOrders(token: string , network: string, skip = 0, f
   }
 }
 
-async function singleNetwork(token: string, network: string) {
+async function singleNetwork(token: string, network: string, durationInSeconds: number) {
   try {
     const { filteredActiveOrders, filteredInActiveOrders } = await fetchAndFilterOrders(token, network);
 
     let orderMetricsLogs = await orderMetrics(filteredActiveOrders, filteredInActiveOrders);
-
-    let tokenArray = [];
-    let liquidityAnalysisLog: string[] = [];
-    let liquiditySummary = '';
     let summarizedMessage = '';
 
-    let totalTokenExternal24hVolUsd, totalTokenExternal24hTrades
-
     const { symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token];
-    tokenArray.push({
-      symbol: tokenSymbol,
-      decimals: tokenDecimals,
-      address: tokenAddress,
-    });
-    tokenArray = [...tokenArray];
 
-    const liquidityAnalysis = await analyzeLiquidity(tokenAddress);
+    const { 
+      liquidityAnalysisLog,
+      totalTokenExternalVolForDurationUsd,
+      totalTokenExternalTradesForDuration
+    } = await analyzeLiquidity(network, token, durationInSeconds);
 
-    totalTokenExternal24hVolUsd = liquidityAnalysis.totalPoolVolume
-    totalTokenExternal24hTrades = liquidityAnalysis.totalPoolTrades
-
-    liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
-    liquidityAnalysisLog.push(`- Total Pool Trades last 24 hours: ${liquidityAnalysis.totalPoolTrades}`);
-    liquidityAnalysisLog.push(`- Total Pool Volume last 24 hours: ${liquidityAnalysis.totalPoolVolume} USD`);
-    liquidityAnalysis.liquidityDataAggregated.forEach((pool: any) => {
-      liquidityAnalysisLog.push(`  - Dex: ${pool.dex}`);
-      liquidityAnalysisLog.push(`  - Pair Address: ${pool.pairAddress}`);
-      liquidityAnalysisLog.push(`  - Pool Volume: ${pool.totalPoolVolume} USD`);
-      liquidityAnalysisLog.push(`  - Pool Trades: ${pool.totalPoolTrades}`);
-      liquidityAnalysisLog.push(`  - Pool Size: ${pool.totalPoolSizeUsd} USD`);
-      liquidityAnalysisLog.push(`  - Buys: ${pool.h24Buys}`);
-      liquidityAnalysisLog.push(`  - Sell: ${pool.h24Sells}`);
-      liquidityAnalysisLog.push(`  - Price Change: ${pool.priceChange24h}`);
-      liquidityAnalysisLog.push(`  - Base Token Liquidity: ${pool.poolBaseTokenLiquidity}`);
-      liquidityAnalysisLog.push(`  - Quote Token Liquidity: ${pool.poolQuoteTokenLiquidity}`);
-    });
-
-    liquiditySummary = `${tokenSymbol}'s trading activity represents about ${(liquidityAnalysis.totalPoolVolume / 10000).toFixed(
-      2
-    )}% of the total volume across ${
-      liquidityAnalysis.liquidityDataAggregated.length
-    } pools, including ${liquidityAnalysis.liquidityDataAggregated.map((pool: any) => pool.dex).join(', ')}.`;
-    
 
     let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders);
     let combinedBalance = await calculateCombinedVaultBalance(filteredActiveOrders.concat(filteredInActiveOrders));
-    let { tradesLast24Hours, aggregatedResults, processOrderLogMessage } = await volumeMetrics(network, filteredActiveOrders.concat(filteredInActiveOrders));
+    let { tradesLastForDuration: totalRaindexTradesForDuration, aggregatedResults, processOrderLogMessage } = await volumeMetrics(
+      network,
+      filteredActiveOrders.concat(filteredInActiveOrders),
+      durationInSeconds
+    );
 
-    const totalVolumeUsd = aggregatedResults.reduce((sum: any, entry: any) => sum + parseFloat(entry.total24hUsd), 0);
+    const totalRaindexVolumeUsd = aggregatedResults.filter((e: any) => {return e.address.toLowerCase() == tokenAddress.toLocaleLowerCase()})[0].totalVolumeForDurationUsd;
     
     summarizedMessage = `
       Insight 1 : 
       
-      Total Raindex trades last 24 hrs : ${tradesLast24Hours}
-      Total external trades last 24 hrs : ${totalTokenExternal24hTrades- tradesLast24Hours}
-      Total trades last 24 hrs : ${totalTokenExternal24hTrades}
-      Total Raindex token volume last 24 hrs : ${totalVolumeUsd}
-      Total external volume last 24 hrs : ${totalTokenExternal24hVolUsd-totalVolumeUsd}
-      Total  volume last 24 hrs : ${totalTokenExternal24hVolUsd}
-      Raindex trades as a % of total trades % = ${((tradesLast24Hours/totalTokenExternal24hTrades) * 100).toFixed(2)}
-      Raindex volume as a % of total volume % = ${((totalVolumeUsd/totalTokenExternal24hVolUsd) * 100).toFixed(2)}
+      Total Raindex trades ${duration} : ${totalRaindexTradesForDuration}
+      Total external trades ${duration} : ${totalTokenExternalTradesForDuration- totalRaindexTradesForDuration}
+      Total trades ${duration} : ${totalTokenExternalTradesForDuration}
+      Total Raindex token volume ${duration} : ${totalRaindexVolumeUsd}
+      Total external volume ${duration} : ${totalTokenExternalVolForDurationUsd-totalRaindexVolumeUsd}
+      Total  volume ${duration} : ${totalTokenExternalVolForDurationUsd}
+      Raindex trades as a % of total trades % = ${((totalRaindexTradesForDuration/totalTokenExternalTradesForDuration) * 100).toFixed(2)}
+      Raindex volume as a % of total volume % = ${((totalRaindexVolumeUsd/totalTokenExternalVolForDurationUsd) * 100).toFixed(2)}
 
       Insight 2 : 
       Current value vault balances in USD : ${combinedBalance}
-      Raindex daily volume as a % of vault balance : ${totalVolumeUsd/combinedBalance}     
+      Raindex daily volume as a % of vault balance : ${totalRaindexVolumeUsd/combinedBalance}     
     `
     
     
@@ -152,6 +123,7 @@ ${liquidityAnalysisLog.join('\n')}
 ${summarizedMessage}
 `;
 
+    // console.log(markdownInput)
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
@@ -176,6 +148,7 @@ ${summarizedMessage}
     );
 
     console.log(response.data.choices[0].message.content); // Formatted Markdown Log
+
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error('Axios Error:', error.response?.data || error.message);
@@ -185,8 +158,17 @@ ${summarizedMessage}
   }
 }
 
-async function analyzeOrders(token: string, network: string) {
-  singleNetwork(token, network)
+async function analyzeOrders(token: string, network: string, duration: string) {
+
+  let durationInSeconds = 0 
+  if(duration === 'daily'){
+    durationInSeconds = 24 * 60 * 60
+  }else if(duration === 'weekly'){
+    durationInSeconds = 7 * 24 * 60 * 60
+  }else if(duration === 'monthly'){
+    durationInSeconds = 30 * 24 * 60 * 60
+  }
+  singleNetwork(token, network, durationInSeconds)
 }
 
 // Parse command-line arguments
@@ -203,11 +185,21 @@ const argv = yargs(hideBin(process.argv))
     description: 'The network name (e.g., polygon, bsc)',
     demandOption: true,
   })
+  .option('duration', {
+    alias: 'd',
+    type: 'string',
+    description: 'Duration (daily, weekly, monthly)'
+  })
   .help()
   .alias('help', 'h')
-  .argv as { token: string; network: string };
+  .argv as { token: string; network: string; duration: string };
 
 // Extract token and network from arguments
-const { token, network } = argv;
+const { token, network, duration } = argv;
+
+console.log('token : ', token)
+console.log('network : ', network)
+console.log('duration : ', duration)
+
   
-analyzeOrders(token, network);
+analyzeOrders(token, network, duration);

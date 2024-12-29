@@ -53,6 +53,10 @@ export interface TokenConfig {
     decimals: number;
     network: string;
     address: string;
+    contractPool: string;
+    poolToken0: string;
+    poolToken1: string;
+    topic0: string;
   }
 
 export interface StablesConfig {
@@ -63,6 +67,7 @@ export interface StablesConfig {
 
 export interface NetworkConfig {
 chainId: number;
+blockTime: number,
 rpc: string;
 subgraphUrl: string;
 stables: StablesConfig[];

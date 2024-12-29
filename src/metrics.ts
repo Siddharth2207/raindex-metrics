@@ -1,11 +1,15 @@
 import axios from 'axios';
 import { ethers } from 'ethers';
 import { tradeQuery } from './queries';
-import { networkConfig } from './config';
+import { tokenConfig, networkConfig } from './config';
 import { LiquidityPool, TokenPair, TokenPrice } from './types';
+import { HypersyncClient, presetQueryLogsOfEvent, QueryResponse } from '@envio-dev/hypersync-client';
+
 
 const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
 const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+const lastMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
 
 export async function orderMetrics(filteredActiveOrders: any[], filteredInActiveOrders: any[]) {
   const totalActiveOrders = filteredActiveOrders.length;
@@ -45,7 +49,7 @@ export async function orderMetrics(filteredActiveOrders: any[], filteredInActive
     `Unique owners in last 24 hrs: ${uniqueOwnersLast24Hours}`,
     `Unique owners in last week: ${uniqueOwnersLastWeek}`,
   ];
-  
+
   return logMessages
 }
 
@@ -72,7 +76,7 @@ async function getTokenPriceUsd(tokenAddress: string, tokenSymbol: string): Prom
     let averagePrice = 0;
 
     // Handle WFLR special case
-    if (tokenAddress.toLowerCase() === '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d') {      
+    if (tokenAddress.toLowerCase() === '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d') {
       const specialPair = pairs.find(
         (pair) =>
           pair.baseToken.address.toLowerCase() === '0xfbda5f676cb37624f28265a144a48b0d6e87d3b6'.toLowerCase() &&
@@ -81,8 +85,8 @@ async function getTokenPriceUsd(tokenAddress: string, tokenSymbol: string): Prom
 
       if (specialPair) {
 
-        currentPrice = (1/parseFloat(specialPair.priceNative)) || 0;
-      
+        currentPrice = (1 / parseFloat(specialPair.priceNative)) || 0;
+
         const priceChange24h = parseFloat(specialPair.priceChange?.h24) || 0;
         if (currentPrice > 0 && priceChange24h !== 0) {
           const priceStart = currentPrice / (1 + priceChange24h / 100);
@@ -142,7 +146,7 @@ export async function calculateCombinedVaultBalance(orders: any) {
       const balance = ethers.utils.formatUnits(vault.balance, tokenDecimals);
 
       // Fetch the price of the token in USD
-      const {currentPrice: currentTokenPrice} = await getTokenPriceUsd(tokenAddress, vault.token.symbol);
+      const { currentPrice: currentTokenPrice } = await getTokenPriceUsd(tokenAddress, vault.token.symbol);
 
       // Calculate the vault's balance in USD
       const vaultBalanceUsd = parseFloat(balance) * currentTokenPrice;
@@ -250,12 +254,12 @@ export async function tokenMetrics(filteredActiveOrders: any[]): Promise<string[
 }
 
 
-export async function volumeMetrics(network: string, filteredOrders: any[]): Promise<any> {
+export async function volumeMetrics(network: string, filteredOrders: any[], durationInSeconds: number): Promise<any> {
 
   const endpoint = networkConfig[network].subgraphUrl;
-  const { tradesLast24Hours, aggregatedResults, processOrderLogMessage } = await processOrdersWithAggregation(endpoint, filteredOrders);
+  const { tradesLastForDuration, aggregatedResults, processOrderLogMessage } = await processOrdersWithAggregation(endpoint, filteredOrders, durationInSeconds);
 
-  return { tradesLast24Hours, aggregatedResults, processOrderLogMessage }
+  return { tradesLastForDuration, aggregatedResults, processOrderLogMessage }
 }
 
 async function fetchTrades(endpoint: string, orderHash: string): Promise<any[]> {
@@ -271,9 +275,9 @@ async function fetchTrades(endpoint: string, orderHash: string): Promise<any[]> 
   }
 }
 
-async function processOrdersWithAggregation(endpoint: string, filteredOrders: any[]): Promise<{tradesLast24Hours: number, aggregatedResults: any[]; processOrderLogMessage: string[] }> {
+async function processOrdersWithAggregation(endpoint: string, filteredOrders: any[], durationInSeconds: number): Promise<{ tradesLastForDuration: number, aggregatedResults: any[]; processOrderLogMessage: string[] }> {
   const currentTimestamp = Math.floor(Date.now() / 1000);
-  const aggregatedVolumes: Record<string, { total24h: ethers.BigNumber; totalWeek: ethers.BigNumber; totalAllTime: ethers.BigNumber; decimals: number; address: string, symbol: string }> = {};
+  const aggregatedVolumes: Record<string, { totalVolumeForDuration: ethers.BigNumber; decimals: number; address: string, symbol: string }> = {};
 
   let orderTrades = [];
   let processOrderLogMessage: string[] = [];
@@ -291,7 +295,7 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
       });
 
       // Calculate volumes for the trades
-      const volumes = calculateVolumes(trades, currentTimestamp);
+      const volumes = calculateVolumes(trades, currentTimestamp, durationInSeconds);
 
       // Aggregate token volumes
       volumes.forEach(volume => {
@@ -301,18 +305,14 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
 
         if (!aggregatedVolumes[address]) {
           aggregatedVolumes[address] = {
-            total24h: ethers.BigNumber.from(0),
-            totalWeek: ethers.BigNumber.from(0),
-            totalAllTime: ethers.BigNumber.from(0),
+            totalVolumeForDuration: ethers.BigNumber.from(0),
             decimals: decimals,
             address,
             symbol: token
           };
         }
 
-        aggregatedVolumes[address].total24h = aggregatedVolumes[address].total24h.add(ethers.utils.parseUnits(volume.totalVolume24h, decimals));
-        aggregatedVolumes[address].totalWeek = aggregatedVolumes[address].totalWeek.add(ethers.utils.parseUnits(volume.totalVolumeWeek, decimals));
-        aggregatedVolumes[address].totalAllTime = aggregatedVolumes[address].totalAllTime.add(ethers.utils.parseUnits(volume.totalVolumeAllTime, decimals));
+        aggregatedVolumes[address].totalVolumeForDuration = aggregatedVolumes[address].totalVolumeForDuration.add(ethers.utils.parseUnits(volume.totalVolumeForDuration, decimals));
       });
     } catch (error) {
       console.error(`Error processing order ${orderHash}:`, error);
@@ -321,22 +321,28 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
   }
 
   const totalTrades = orderTrades.reduce((sum, order) => sum + order.trades.length, 0);
-  const tradesLast24Hours = orderTrades
-    .flatMap(order => order.trades)
-    .filter(trade => new Date(Number(trade.timestamp) * 1000) >= last24Hours).length;
 
-  const{tradeDistributionLast24h, volumeDistributionLast24h} = await calculateTradeDistribution(orderTrades);
-
-  const tradesLastWeek = orderTrades
+  const tradesLastForDuration = orderTrades
     .flatMap(order => order.trades)
-    .filter(trade => new Date(Number(trade.timestamp) * 1000) >= lastWeek).length;
+    .filter(trade => new Date(Number(trade.timestamp) * 1000) >= new Date(Date.now() - (durationInSeconds * 1000))).length;
+
+
+  const { tradeDistributionForDuration, volumeDistributionForDuration } = await calculateTradeDistribution(orderTrades, durationInSeconds);
+
+  let logString = 'For Duration'
+  if (durationInSeconds === 86400) {
+    logString = '24 hours'
+  } else if (durationInSeconds === 86400 * 7) {
+    logString = 'week'
+  } else if (durationInSeconds === 86400 * 30) {
+    logString = 'month'
+  }
 
   processOrderLogMessage.push(`Trade Metrics:`);
-  processOrderLogMessage.push(`- Trades in Last 24 Hours: ${tradesLast24Hours}`);
-  processOrderLogMessage.push(`- Trades in Last Week (inc last 24 hours): ${tradesLastWeek}`);
+  processOrderLogMessage.push(`- Trades in last ${logString}: ${tradesLastForDuration}`);
   processOrderLogMessage.push(`- Total Historical Trades: ${totalTrades}`);
-  processOrderLogMessage.push(`- Trade Distribution in last 24h by Order: ${JSON.stringify(tradeDistributionLast24h, null, 2)}`);
-  processOrderLogMessage.push(`- Volume Distribution in last 24h by Order: ${JSON.stringify(volumeDistributionLast24h, null, 2)}`);
+  processOrderLogMessage.push(`- Trade Distribution in ${logString} by Order: ${JSON.stringify(tradeDistributionForDuration, null, 2)}`);
+  processOrderLogMessage.push(`- Volume Distribution in ${logString} by Order: ${JSON.stringify(volumeDistributionForDuration, null, 2)}`);
 
 
   // Format aggregated volumes for printing
@@ -345,12 +351,8 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
     address: data.address,
     decimals: data.decimals,
     symbol: data.symbol,
-    total24h: ethers.utils.formatUnits(data.total24h, data.decimals),
-    totalWeek: ethers.utils.formatUnits(data.totalWeek, data.decimals),
-    totalAllTime: ethers.utils.formatUnits(data.totalAllTime, data.decimals),
-    total24hUsd: 0,
-    totalWeekUsd: 0,
-    totalAllTimeUsd: 0,
+    totalVolumeForDuration: ethers.utils.formatUnits(data.totalVolumeForDuration, data.decimals),
+    totalVolumeForDurationUsd: 0,
     currentPrice: 0
   }));
 
@@ -358,36 +360,35 @@ async function processOrdersWithAggregation(endpoint: string, filteredOrders: an
 
   // Add aggregated volume metrics to processOrderLogMessage
   processOrderLogMessage.push(`Raindex Volume by Token and Total:`);
+
   aggregatedResults.forEach(entry => {
     processOrderLogMessage.push(`- **Token**: ${entry.token} - ${entry.address}`);
     processOrderLogMessage.push(`  - **Symbol**: ${entry.symbol}`);
     processOrderLogMessage.push(`  - **${entry.symbol} Currnet price**: ${entry.currentPrice} USD`);
+    processOrderLogMessage.push(`  - **${logString} Volume**: ${entry.totalVolumeForDuration} ${entry.symbol}`);
+    processOrderLogMessage.push(`  - **${logString} Volume (USD)**: ${entry.totalVolumeForDurationUsd} USD`);
 
-    processOrderLogMessage.push(`  - **24h Volume**: ${entry.total24h} ${entry.symbol}`);
-    processOrderLogMessage.push(`  - **Week Volume**: ${entry.totalWeek} ${entry.symbol}`);
-    processOrderLogMessage.push(`  - **All Time Volume**: ${entry.totalAllTime} ${entry.symbol}`);
-    processOrderLogMessage.push(`  - **24h Volume (USD)**: ${entry.total24hUsd} USD`);
-    processOrderLogMessage.push(`  - **Week Volume (USD)**: ${entry.totalWeekUsd} USD`);
-    processOrderLogMessage.push(`  - **All Time Volume (USD)**: ${entry.totalAllTimeUsd} USD`);
   });
 
-  return { tradesLast24Hours, aggregatedResults, processOrderLogMessage };
+  return { tradesLastForDuration, aggregatedResults, processOrderLogMessage };
 }
 
 async function calculateTradeDistribution(
-  orderTrades: any[]
+  orderTrades: any[],
+  durationInSeconds: number
 ): Promise<{
-  tradeDistributionLast24h: any[];
-  volumeDistributionLast24h: any[];
+  tradeDistributionForDuration: any[];
+  volumeDistributionForDuration: any[];
+
   tokenVolumesPerOrder: Record<
     string,
     Record<
       string,
       {
-        totalVolume24h: ethers.BigNumber;
-        totalVolume24hUsd: string;
-        inVolume24h: ethers.BigNumber;
-        outVolume24h: ethers.BigNumber;
+        totalVolumeDuration: ethers.BigNumber;
+        totalVolumeDurationUsd: string;
+        inVolumeDuration: ethers.BigNumber;
+        outVolumeDuration: ethers.BigNumber;
         currentPrice: number;
         decimals: number;
         address: string;
@@ -396,36 +397,43 @@ async function calculateTradeDistribution(
     >
   >;
 }> {
-  const orderTrades24h = orderTrades.map(order => ({
+
+  const orderTradesForDuration = orderTrades.map(order => ({
     orderHash: order.orderHash,
     trades: order.trades.filter(
-      (trade: any) => new Date(Number(trade.timestamp) * 1000) >= last24Hours
+      (trade: any) => new Date(Number(trade.timestamp) * 1000) >= new Date(Date.now() - (durationInSeconds * 1000))
     ),
   }));
 
-  const totalTradesLast24Hours = orderTrades24h.reduce(
+  const totalTradesForDuration = orderTradesForDuration.reduce(
     (sum, order) => sum + order.trades.length,
     0
   );
 
-  const tradeDistributionLast24h = orderTrades24h.map(order => ({
+  const tradeDistributionForDuration = orderTradesForDuration.map(order => ({
     orderHash: order.orderHash,
     tradeCount: order.trades.length,
     tradePercentage: (
-      (order.trades.length / totalTradesLast24Hours) *
+      (order.trades.length / totalTradesForDuration) *
       100
     ).toFixed(2),
   }));
 
+  const { volumeDistributionForDuration, tokenVolumesPerOrder } = await getVolumeDistribution(orderTradesForDuration)
+
+  return { tradeDistributionForDuration, volumeDistributionForDuration, tokenVolumesPerOrder };
+}
+
+async function getVolumeDistribution(orderTradesDuration: any[]) {
   const tokenVolumesPerOrder: Record<
     string,
     Record<
       string,
       {
-        totalVolume24h: ethers.BigNumber;
-        totalVolume24hUsd: string;
-        inVolume24h: ethers.BigNumber;
-        outVolume24h: ethers.BigNumber;
+        totalVolumeDuration: ethers.BigNumber;
+        totalVolumeDurationUsd: string;
+        inVolumeDuration: ethers.BigNumber;
+        outVolumeDuration: ethers.BigNumber;
         currentPrice: number;
         decimals: number;
         address: string;
@@ -434,8 +442,8 @@ async function calculateTradeDistribution(
     >
   > = {};
 
-  for (let i = 0; i < orderTrades24h.length; i++) {
-    const { orderHash, trades } = orderTrades24h[i];
+  for (let i = 0; i < orderTradesDuration.length; i++) {
+    const { orderHash, trades } = orderTradesDuration[i];
 
     if (!tokenVolumesPerOrder[orderHash]) {
       tokenVolumesPerOrder[orderHash] = {};
@@ -453,10 +461,10 @@ async function calculateTradeDistribution(
           const { currentPrice } = await getTokenPriceUsd(token.address, token.symbol);
 
           tokenVolumesPerOrder[orderHash][token.address] = {
-            totalVolume24h: ethers.BigNumber.from(0),
-            totalVolume24hUsd: "0",
-            inVolume24h: ethers.BigNumber.from(0),
-            outVolume24h: ethers.BigNumber.from(0),
+            totalVolumeDuration: ethers.BigNumber.from(0),
+            totalVolumeDurationUsd: "0",
+            inVolumeDuration: ethers.BigNumber.from(0),
+            outVolumeDuration: ethers.BigNumber.from(0),
             currentPrice,
             decimals: parseInt(token.decimals),
             address: token.address,
@@ -468,36 +476,36 @@ async function calculateTradeDistribution(
       await initializeToken(orderHash, inputToken);
       await initializeToken(orderHash, outputToken);
 
-      tokenVolumesPerOrder[orderHash][inputToken.address].inVolume24h =
-        tokenVolumesPerOrder[orderHash][inputToken.address].inVolume24h.add(inputAmount);
+      tokenVolumesPerOrder[orderHash][inputToken.address].inVolumeDuration =
+        tokenVolumesPerOrder[orderHash][inputToken.address].inVolumeDuration.add(inputAmount);
 
-      tokenVolumesPerOrder[orderHash][outputToken.address].outVolume24h =
-        tokenVolumesPerOrder[orderHash][outputToken.address].outVolume24h.add(outputAmount);
+      tokenVolumesPerOrder[orderHash][outputToken.address].outVolumeDuration =
+        tokenVolumesPerOrder[orderHash][outputToken.address].outVolumeDuration.add(outputAmount);
 
-      tokenVolumesPerOrder[orderHash][inputToken.address].totalVolume24h =
-        tokenVolumesPerOrder[orderHash][inputToken.address].inVolume24h.add(
-          tokenVolumesPerOrder[orderHash][inputToken.address].outVolume24h
+      tokenVolumesPerOrder[orderHash][inputToken.address].totalVolumeDuration =
+        tokenVolumesPerOrder[orderHash][inputToken.address].inVolumeDuration.add(
+          tokenVolumesPerOrder[orderHash][inputToken.address].outVolumeDuration
         );
 
-      tokenVolumesPerOrder[orderHash][outputToken.address].totalVolume24h =
-        tokenVolumesPerOrder[orderHash][outputToken.address].inVolume24h.add(
-          tokenVolumesPerOrder[orderHash][outputToken.address].outVolume24h
+      tokenVolumesPerOrder[orderHash][outputToken.address].totalVolumeDuration =
+        tokenVolumesPerOrder[orderHash][outputToken.address].inVolumeDuration.add(
+          tokenVolumesPerOrder[orderHash][outputToken.address].outVolumeDuration
         );
 
       // Convert to USD using the current price
-      tokenVolumesPerOrder[orderHash][inputToken.address].totalVolume24hUsd = (
+      tokenVolumesPerOrder[orderHash][inputToken.address].totalVolumeDurationUsd = (
         parseFloat(
           ethers.utils.formatUnits(
-            tokenVolumesPerOrder[orderHash][inputToken.address].totalVolume24h,
+            tokenVolumesPerOrder[orderHash][inputToken.address].totalVolumeDuration,
             tokenVolumesPerOrder[orderHash][inputToken.address].decimals
           )
         ) * tokenVolumesPerOrder[orderHash][inputToken.address].currentPrice
       ).toFixed(2);
 
-      tokenVolumesPerOrder[orderHash][outputToken.address].totalVolume24hUsd = (
+      tokenVolumesPerOrder[orderHash][outputToken.address].totalVolumeDurationUsd = (
         parseFloat(
           ethers.utils.formatUnits(
-            tokenVolumesPerOrder[orderHash][outputToken.address].totalVolume24h,
+            tokenVolumesPerOrder[orderHash][outputToken.address].totalVolumeDuration,
             tokenVolumesPerOrder[orderHash][outputToken.address].decimals
           )
         ) * tokenVolumesPerOrder[orderHash][outputToken.address].currentPrice
@@ -509,14 +517,14 @@ async function calculateTradeDistribution(
   const totalVolumeUsd = Object.values(tokenVolumesPerOrder).reduce((total, tokens) => {
     return (
       total +
-      Object.values(tokens).reduce((sum, token) => sum + parseFloat(token.totalVolume24hUsd), 0)
+      Object.values(tokens).reduce((sum, token) => sum + parseFloat(token.totalVolumeDurationUsd), 0)
     );
   }, 0);
 
   // Calculate volume distribution for each order
-  const volumeDistributionLast24h = Object.entries(tokenVolumesPerOrder).map(([orderHash, tokens]) => {
+  const volumeDistributionForDuration = Object.entries(tokenVolumesPerOrder).map(([orderHash, tokens]) => {
     const orderTotalVolumeUsd = Object.values(tokens).reduce(
-      (sum, token) => sum + parseFloat(token.totalVolume24hUsd),
+      (sum, token) => sum + parseFloat(token.totalVolumeDurationUsd),
       0
     );
 
@@ -527,29 +535,21 @@ async function calculateTradeDistribution(
     };
   });
 
-  return { tradeDistributionLast24h, volumeDistributionLast24h, tokenVolumesPerOrder };
+  return { volumeDistributionForDuration, tokenVolumesPerOrder }
+
 }
 
-
-
-function calculateVolumes(trades: any[], currentTimestamp: number) {
+function calculateVolumes(trades: any[], currentTimestamp: number, durationInSeconds: number) {
   const tokenVolumes: Record<
     string,
     {
-      inVolume24h: ethers.BigNumber;
-      outVolume24h: ethers.BigNumber;
-      inVolumeWeek: ethers.BigNumber;
-      outVolumeWeek: ethers.BigNumber;
-      inVolumeAllTime: ethers.BigNumber;
-      outVolumeAllTime: ethers.BigNumber;
+      inVolumeForDuration: ethers.BigNumber;
+      outVolumeForDuration: ethers.BigNumber;
       decimals: number;
       address: string;
       symbol: string
     }
   > = {};
-
-  const oneDayInSeconds = 24 * 60 * 60;
-  const oneWeekInSeconds = 7 * 24 * 60 * 60;
 
   trades.forEach(trade => {
     const inputToken = trade.inputVaultBalanceChange.vault.token;
@@ -566,12 +566,8 @@ function calculateVolumes(trades: any[], currentTimestamp: number) {
     const initializeToken = (token: any) => {
       if (!tokenVolumes[token.address]) {
         tokenVolumes[token.address] = {
-          inVolume24h: ethers.BigNumber.from(0),
-          outVolume24h: ethers.BigNumber.from(0),
-          inVolumeWeek: ethers.BigNumber.from(0),
-          outVolumeWeek: ethers.BigNumber.from(0),
-          inVolumeAllTime: ethers.BigNumber.from(0),
-          outVolumeAllTime: ethers.BigNumber.from(0),
+          inVolumeForDuration: ethers.BigNumber.from(0),
+          outVolumeForDuration: ethers.BigNumber.from(0),
           decimals: parseInt(token.decimals),
           address: token.address,
           symbol: token.symbol
@@ -582,44 +578,26 @@ function calculateVolumes(trades: any[], currentTimestamp: number) {
     initializeToken(inputToken);
     initializeToken(outputToken);
 
-    // Add to all-time volumes
-    tokenVolumes[inputToken.address].inVolumeAllTime = tokenVolumes[inputToken.address].inVolumeAllTime.add(inputAmount);
-    tokenVolumes[outputToken.address].outVolumeAllTime = tokenVolumes[outputToken.address].outVolumeAllTime.add(outputAmount);
-
-    // Add to 24-hour volumes
-    if (timeDiff <= oneDayInSeconds) {
-      tokenVolumes[inputToken.address].inVolume24h = tokenVolumes[inputToken.address].inVolume24h.add(inputAmount);
-      tokenVolumes[outputToken.address].outVolume24h = tokenVolumes[outputToken.address].outVolume24h.add(outputAmount);
+    if (timeDiff <= durationInSeconds) {
+      tokenVolumes[inputToken.address].inVolumeForDuration = tokenVolumes[inputToken.address].inVolumeForDuration.add(inputAmount);
+      tokenVolumes[outputToken.address].outVolumeForDuration = tokenVolumes[outputToken.address].outVolumeForDuration.add(outputAmount);
     }
 
-    // Add to 1-week volumes
-    if (timeDiff <= oneWeekInSeconds) {
-      tokenVolumes[inputToken.address].inVolumeWeek = tokenVolumes[inputToken.address].inVolumeWeek.add(inputAmount);
-      tokenVolumes[outputToken.address].outVolumeWeek = tokenVolumes[outputToken.address].outVolumeWeek.add(outputAmount);
-    }
   });
 
   // Format volumes
   return Object.entries(tokenVolumes).map(([tokenAddress, data]) => {
-    const { inVolume24h, outVolume24h, inVolumeWeek, outVolumeWeek, inVolumeAllTime, outVolumeAllTime, decimals, address, symbol } = data;
+    const { inVolumeForDuration, outVolumeForDuration, decimals, address, symbol } = data;
 
-    const totalVolume24h = inVolume24h.add(outVolume24h);
-    const totalVolumeWeek = inVolumeWeek.add(outVolumeWeek);
-    const totalVolumeAllTime = inVolumeAllTime.add(outVolumeAllTime);
+    const totalVolumeForDuration = inVolumeForDuration.add(outVolumeForDuration);
 
     return {
       token: symbol,
       decimals: decimals,
       address: address,
-      inVolume24h: ethers.utils.formatUnits(inVolume24h, decimals),
-      outVolume24h: ethers.utils.formatUnits(outVolume24h, decimals),
-      totalVolume24h: ethers.utils.formatUnits(totalVolume24h, decimals),
-      inVolumeWeek: ethers.utils.formatUnits(inVolumeWeek, decimals),
-      outVolumeWeek: ethers.utils.formatUnits(outVolumeWeek, decimals),
-      totalVolumeWeek: ethers.utils.formatUnits(totalVolumeWeek, decimals),
-      inVolumeAllTime: ethers.utils.formatUnits(inVolumeAllTime, decimals),
-      outVolumeAllTime: ethers.utils.formatUnits(outVolumeAllTime, decimals),
-      totalVolumeAllTime: ethers.utils.formatUnits(totalVolumeAllTime, decimals),
+      inVolumeForDuration: ethers.utils.formatUnits(inVolumeForDuration, decimals),
+      outVolumeForDuration: ethers.utils.formatUnits(outVolumeForDuration, decimals),
+      totalVolumeForDuration: ethers.utils.formatUnits(totalVolumeForDuration, decimals),
     };
   });
 }
@@ -630,23 +608,15 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
       const tokenAddress = item.address;
 
       // Fetch the current price of the token
-      const {averagePrice, currentPrice} = await getTokenPriceUsd(tokenAddress, item.symbol);
+      const { averagePrice, currentPrice } = await getTokenPriceUsd(tokenAddress, item.symbol);
 
       if (currentPrice > 0) {
-        // Convert total volumes to USD
-        item.total24hUsd = (parseFloat(item.total24h) * currentPrice).toString();
-        item.totalWeekUsd = (parseFloat(item.totalWeek) * currentPrice).toString();
-        item.totalAllTimeUsd = (parseFloat(item.totalAllTime) * currentPrice).toString();
+        item.totalVolumeForDurationUsd = (parseFloat(item.totalVolumeForDuration) * currentPrice).toString();
         item.currentPrice = (parseFloat(currentPrice.toString())).toString();
-
-
       } else {
         console.warn(`Could not fetch price for token ${tokenAddress}. Skipping USD conversion.`);
-        item.total24hUsd = 0;
-        item.totalWeekUsd = 0;
-        item.totalAllTimeUsd = 0;
+        item.totalVolumeForDurationUsd = 0;
         item.currentPrice = 0;
-
       }
     }
   }
@@ -683,30 +653,166 @@ async function fetchLiquidityData(tokenAddress: string): Promise<LiquidityPool[]
   }
 }
 
-export async function analyzeLiquidity(tokenAddress: string): Promise<any> {
-  const liquidityData = await fetchLiquidityData(tokenAddress);
+export async function analyzeLiquidity(network: string, token: string, durationInSeconds: number): Promise<any> {
 
-  // Calculate total volumes and trades across all pools
-  const totalPoolVolume = liquidityData.reduce((sum, pool) => sum + pool.volume24h, 0);
-  const totalPoolTrades = liquidityData.reduce((sum, pool) => sum + pool.trades24h, 0);
+  const { symbol: tokenSymbol, decimals: tokenDecimals, address: tokenAddress } = tokenConfig[token];
+  let liquidityAnalysisLog: string[] = [];
+  let totalTokenExternalVolForDurationUsd, totalTokenExternalTradesForDuration;
 
-  // Generate results
-  const liquidityDataAggregated = liquidityData.map((pool: LiquidityPool) => ({
-    dex: pool.dex,
-    pairAddress: pool.pairAddress,
-    totalPoolVolume: pool.volume24h.toFixed(2),
-    totalPoolTrades: pool.trades24h,
-    totalPoolSizeUsd: pool.poolSizeUsd,
-    poolBaseTokenLiquidity: pool.poolBaseTokenLiquidity,
-    poolQuoteTokenLiquidity: pool.poolQuoteTokenLiquidity,
-    h24Buys: pool.h24Buys,
-    h24Sells: pool.h24Sells,
-    priceChange24h: pool.priceChange24h.toFixed(2),
-  }));
+  liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
+
+  if (durationInSeconds == 86400) {
+    const liquidityData = await fetchLiquidityData(tokenAddress);
+
+    // Calculate total volumes and trades across all pools
+    const totalPoolVolume = liquidityData.reduce((sum, pool) => sum + pool.volume24h, 0);
+    const totalPoolTrades = liquidityData.reduce((sum, pool) => sum + pool.trades24h, 0);
+
+    // Generate results
+    const liquidityDataAggregated = liquidityData.map((pool: LiquidityPool) => ({
+      dex: pool.dex,
+      pairAddress: pool.pairAddress,
+      totalPoolVolume: pool.volume24h.toFixed(2),
+      totalPoolTrades: pool.trades24h,
+      totalPoolSizeUsd: pool.poolSizeUsd,
+      poolBaseTokenLiquidity: pool.poolBaseTokenLiquidity,
+      poolQuoteTokenLiquidity: pool.poolQuoteTokenLiquidity,
+      h24Buys: pool.h24Buys,
+      h24Sells: pool.h24Sells,
+      priceChange24h: pool.priceChange24h.toFixed(2),
+    }));
+    
+    liquidityAnalysisLog.push(`- Total Pool Trades last 24 hours: ${totalPoolTrades}`);
+    liquidityAnalysisLog.push(`- Total Pool Volume last 24 hours: ${totalPoolVolume} USD`);
+    liquidityDataAggregated.forEach((pool: any) => {
+      liquidityAnalysisLog.push(`  - Dex: ${pool.dex}`);
+      liquidityAnalysisLog.push(`  - Pair Address: ${pool.pairAddress}`);
+      liquidityAnalysisLog.push(`  - Pool Volume: ${pool.totalPoolVolume} USD`);
+      liquidityAnalysisLog.push(`  - Pool Trades: ${pool.totalPoolTrades}`);
+      liquidityAnalysisLog.push(`  - Pool Size: ${pool.totalPoolSizeUsd} USD`);
+      liquidityAnalysisLog.push(`  - Buys: ${pool.h24Buys}`);
+      liquidityAnalysisLog.push(`  - Sell: ${pool.h24Sells}`);
+      liquidityAnalysisLog.push(`  - Price Change: ${pool.priceChange24h}`);
+      liquidityAnalysisLog.push(`  - Base Token Liquidity: ${pool.poolBaseTokenLiquidity}`);
+      liquidityAnalysisLog.push(`  - Quote Token Liquidity: ${pool.poolQuoteTokenLiquidity}`);
+    });
+    totalTokenExternalVolForDurationUsd = totalPoolVolume
+    totalTokenExternalTradesForDuration = totalPoolTrades
+
+  } else {
+    const { 
+      totalPoolVolumeUsdForDuration,
+      totalPoolTradesForDuration, 
+    } = await analyzeHyperSyncData(tokenConfig[token], networkConfig[network], durationInSeconds);
+
+    totalTokenExternalVolForDurationUsd = totalPoolVolumeUsdForDuration;
+    totalTokenExternalTradesForDuration = totalPoolTradesForDuration;
+
+    liquidityAnalysisLog.push(` - Pair Address: ${tokenConfig[token].contractPool}`);
+    liquidityAnalysisLog.push(` - Pool Volume for duration : ${totalTokenExternalVolForDurationUsd} USD`);
+    liquidityAnalysisLog.push(` - Pool Trades for duration : ${totalTokenExternalTradesForDuration}`);
+      
+  }
 
   return {
-    totalPoolVolume,
-    totalPoolTrades,
-    liquidityDataAggregated,
+    liquidityAnalysisLog,
+    totalTokenExternalVolForDurationUsd,
+    totalTokenExternalTradesForDuration,
   };
+}
+
+async function getBlockNumberForTimePeriod(network: any, seconds: any) {
+  try {
+    // Validate network object
+    if (!network.rpc || !network.blockTime) {
+      throw new Error('Invalid network object. Ensure "rpc" and "blockTime" are provided.');
+    }
+
+    // Calculate the number of blocks in the given time period
+    const blocksInPeriod = Math.round(seconds / network.blockTime);
+
+    // Fetch the latest block number
+    const response = await axios.post(network.rpc, {
+      jsonrpc: '2.0',
+      method: 'eth_blockNumber',
+      params: [],
+      id: 1,
+    });
+
+    const latestBlockHex = response.data.result;
+    const latestBlock = parseInt(latestBlockHex, 16);
+
+    // Calculate the block number for the start of the time period
+    const blockForPeriod = latestBlock - blocksInPeriod;
+
+    return { blockForPeriod, latestBlock };
+  } catch (error) {
+    console.error('Error calculating block number:', error);
+    throw error;
+  }
+}
+
+async function analyzeHyperSyncData(token: any, network: any, durationInSeconds: number) {
+
+  // Create hypersync client using the mainnet hypersync endpoint
+  const hyperSyncClinet = HypersyncClient.new({
+    url: `https://${network.chainId}.hypersync.xyz`
+  });
+
+  const { blockForPeriod, latestBlock } = await getBlockNumberForTimePeriod(network, durationInSeconds);
+
+  const provider = new ethers.providers.JsonRpcProvider(network.rpc);
+  const uniswapV2PoolAbi = [
+    "function token0() external view returns (address)",
+    "function token1() external view returns (address)",
+  ];
+  const erc20Abi = [
+    "function decimals() external view returns (uint8)",
+    "function symbol() external view returns (string)",
+  ];
+  const poolContract = new ethers.Contract(token.contractPool, uniswapV2PoolAbi, provider);
+  const token0Address = await poolContract.token0();
+  const token1Address = await poolContract.token1();
+
+  const token0Contract = new ethers.Contract(token0Address, erc20Abi, provider);
+  const token1Contract = new ethers.Contract(token1Address, erc20Abi, provider);
+
+  const token0Decimals = await token0Contract.decimals();
+  const token1Decimals = await token1Contract.decimals();
+  const token0Symbol = await token0Contract.symbol();
+  const token1Symbol = await token1Contract.symbol();
+
+  let query = presetQueryLogsOfEvent(token.contractPool, token.topic0, blockForPeriod, latestBlock);
+  const queryResult: QueryResponse = await hyperSyncClinet.get(query);
+
+  let totalAmount0 = ethers.BigNumber.from(0)
+  let totalAmount1 = ethers.BigNumber.from(0)
+
+  for (let i = 0; i < queryResult.data.logs.length; i++) {
+    let log = queryResult.data.logs[i]?.data;
+
+    if (log !== undefined) {
+      const logBytes = ethers.utils.arrayify(log);
+
+      let decodedAmount = ethers.utils.defaultAbiCoder.decode(
+        ["uint256", "uint256", "uint256", "uint256"],
+        logBytes
+      );
+      totalAmount0 = totalAmount0.add(ethers.BigNumber.from(decodedAmount[0])).add(ethers.BigNumber.from(decodedAmount[2]))
+      totalAmount1 = totalAmount1.add(ethers.BigNumber.from(decodedAmount[1])).add(ethers.BigNumber.from(decodedAmount[3]))
+    } else {
+      console.error("Hex string is undefined!");
+    }
+  }
+
+  const { currentPrice: currentToken0Price } = await getTokenPriceUsd(token0Symbol, token0Symbol);
+  const { currentPrice: currentToken1Price } = await getTokenPriceUsd(token1Symbol, token1Symbol);
+
+  const totalPoolVolumeUsdForDuration = token.address.toLowerCase() == token0Address.toLowerCase() ? 
+    (parseFloat(ethers.utils.formatUnits(totalAmount0.toString(), token0Decimals)) * currentToken0Price) :
+    (parseFloat(ethers.utils.formatUnits(totalAmount1.toString(), token1Decimals)) * currentToken1Price)
+
+  return { totalPoolVolumeUsdForDuration, totalPoolTradesForDuration: queryResult.data.logs.length }
+
+
 }
