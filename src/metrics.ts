@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { tradeQuery } from './queries';
 import { tokenConfig, networkConfig } from './config';
 import { LiquidityPool, TokenPair, TokenPrice } from './types';
-import { HypersyncClient, presetQueryLogsOfEvent, QueryResponse } from '@envio-dev/hypersync-client';
+import { HypersyncClient, presetQueryLogsOfEvent, QueryResponse, Log } from '@envio-dev/hypersync-client';
 
 
 const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -708,7 +708,6 @@ export async function analyzeLiquidity(network: string, token: string, durationI
     totalTokenExternalVolForDurationUsd = totalPoolVolumeUsdForDuration;
     totalTokenExternalTradesForDuration = totalPoolTradesForDuration;
 
-    liquidityAnalysisLog.push(` - Pair Address: ${tokenConfig[token].contractPool}`);
     liquidityAnalysisLog.push(` - Pool Volume for duration : ${totalTokenExternalVolForDurationUsd} USD`);
     liquidityAnalysisLog.push(` - Pool Trades for duration : ${totalTokenExternalTradesForDuration}`);
       
@@ -769,50 +768,166 @@ async function analyzeHyperSyncData(token: any, network: any, durationInSeconds:
   const erc20Abi = [
     "function decimals() external view returns (uint8)",
     "function symbol() external view returns (string)",
-  ];
-  const poolContract = new ethers.Contract(token.contractPool, uniswapV2PoolAbi, provider);
-  const token0Address = await poolContract.token0();
-  const token1Address = await poolContract.token1();
+  ]; 
 
-  const token0Contract = new ethers.Contract(token0Address, erc20Abi, provider);
-  const token1Contract = new ethers.Contract(token1Address, erc20Abi, provider);
+  const totalVolumeForTokens: Record<string, { totalTokenVolumeForDuration: number }> = {};
+  let totalPoolTradesForDuration = 0;
 
-  const token0Decimals = await token0Contract.decimals();
-  const token1Decimals = await token1Contract.decimals();
-  const token0Symbol = await token0Contract.symbol();
-  const token1Symbol = await token1Contract.symbol();
+  for(let i = 0; i < token.poolsV2.length; i++){
+    const poolContractAddress = token.poolsV2[i];
+    const poolContract = new ethers.Contract(poolContractAddress, uniswapV2PoolAbi, provider);
+    const token0Address = await poolContract.token0();
+    const token1Address = await poolContract.token1();
 
-  let query = presetQueryLogsOfEvent(token.contractPool, token.topic0, blockForPeriod, latestBlock);
-  const queryResult: QueryResponse = await hyperSyncClinet.get(query);
+    const token0Contract = new ethers.Contract(token0Address, erc20Abi, provider);
+    const token1Contract = new ethers.Contract(token1Address, erc20Abi, provider);
 
-  let totalAmount0 = ethers.BigNumber.from(0)
-  let totalAmount1 = ethers.BigNumber.from(0)
+    const token0Decimals = await token0Contract.decimals();
+    const token1Decimals = await token1Contract.decimals();
 
-  for (let i = 0; i < queryResult.data.logs.length; i++) {
-    let log = queryResult.data.logs[i]?.data;
+    const swapQueryResult = await fetchLogs(
+      hyperSyncClinet,
+      poolContractAddress,
+      '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822',
+      blockForPeriod,
+      latestBlock
+    );
 
-    if (log !== undefined) {
-      const logBytes = ethers.utils.arrayify(log);
+    let totalAmount0 = ethers.BigNumber.from(0);
+    let totalAmount1 = ethers.BigNumber.from(0);
+    totalPoolTradesForDuration += swapQueryResult.length;
+    
+    for (let i = 0; i < swapQueryResult.length; i++) {
+      let log = swapQueryResult[i]?.data;
+  
+      if (log !== undefined) {
+        const logBytes = ethers.utils.arrayify(log);
+        let decodedAmount = ethers.utils.defaultAbiCoder.decode(
+          ["uint256", "uint256", "uint256", "uint256"],
+          logBytes
+        );
+        totalAmount0 = totalAmount0.add(ethers.BigNumber.from(decodedAmount[0])).add(ethers.BigNumber.from(decodedAmount[2]));
+        totalAmount1 = totalAmount1.add(ethers.BigNumber.from(decodedAmount[1])).add(ethers.BigNumber.from(decodedAmount[3]));
+      } else {
+        console.error("Hex string is undefined!");
+      }
+    }
 
-      let decodedAmount = ethers.utils.defaultAbiCoder.decode(
-        ["uint256", "uint256", "uint256", "uint256"],
-        logBytes
-      );
-      totalAmount0 = totalAmount0.add(ethers.BigNumber.from(decodedAmount[0])).add(ethers.BigNumber.from(decodedAmount[2]))
-      totalAmount1 = totalAmount1.add(ethers.BigNumber.from(decodedAmount[1])).add(ethers.BigNumber.from(decodedAmount[3]))
+    let totalAmount0Formated = parseFloat(ethers.utils.formatUnits(totalAmount0.toString(), token0Decimals));
+    let totalAmount1Formated = parseFloat(ethers.utils.formatUnits(totalAmount1.toString(), token1Decimals));
+
+    if (totalVolumeForTokens[token0Address.toLowerCase()]) {
+      totalVolumeForTokens[token0Address.toLowerCase()].totalTokenVolumeForDuration += totalAmount0Formated;
     } else {
-      console.error("Hex string is undefined!");
+      totalVolumeForTokens[token0Address.toLowerCase()] = { totalTokenVolumeForDuration: totalAmount0Formated };
+    }
+
+    if (totalVolumeForTokens[token1Address.toLowerCase()]) {
+      totalVolumeForTokens[token1Address.toLowerCase()].totalTokenVolumeForDuration += totalAmount1Formated;
+    } else {
+      totalVolumeForTokens[token1Address.toLowerCase()] = { totalTokenVolumeForDuration: totalAmount1Formated };
+    }
+    
+  }
+
+  for(let i = 0; i < token.poolsV3.length; i++){
+    const poolContractAddress = token.poolsV3[i];
+    const poolContract = new ethers.Contract(poolContractAddress, uniswapV2PoolAbi, provider);
+    const token0Address = await poolContract.token0();
+    const token1Address = await poolContract.token1();
+
+    const token0Contract = new ethers.Contract(token0Address, erc20Abi, provider);
+    const token1Contract = new ethers.Contract(token1Address, erc20Abi, provider);
+    const token0Decimals = await token0Contract.decimals();
+    const token1Decimals = await token1Contract.decimals();
+    
+    let totalAmount0 = ethers.BigNumber.from(0);
+    let totalAmount1 = ethers.BigNumber.from(0);
+
+    const swapQueryResult = await fetchLogs(
+      hyperSyncClinet,
+      poolContractAddress,
+      '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67',
+      blockForPeriod,
+      latestBlock
+    );
+
+    totalPoolTradesForDuration += swapQueryResult.length;
+    for (let i = 0; i < swapQueryResult.length; i++) {
+      let log = swapQueryResult[i]?.data;
+  
+      if (log !== undefined) {
+        const logBytes = ethers.utils.arrayify(log);
+        let decodedAmount = ethers.utils.defaultAbiCoder.decode(
+            ["int256", "int256", "uint160", "uint128","int24"],
+            logBytes
+        );
+        totalAmount0 = totalAmount0.add(ethers.BigNumber.from(decodedAmount[0]).abs())
+        totalAmount1 = totalAmount1.add(ethers.BigNumber.from(decodedAmount[1]).abs())
+      } else {
+        console.error("Hex string is undefined!");
+      }
+    }
+
+    let totalAmount0Formated = parseFloat(ethers.utils.formatUnits(totalAmount0.toString(), token0Decimals));
+    let totalAmount1Formated = parseFloat(ethers.utils.formatUnits(totalAmount1.toString(), token1Decimals));
+
+    if (totalVolumeForTokens[token0Address.toLowerCase()]) {
+      totalVolumeForTokens[token0Address.toLowerCase()].totalTokenVolumeForDuration += totalAmount0Formated;
+    } else {
+      totalVolumeForTokens[token0Address.toLowerCase()] = { totalTokenVolumeForDuration: totalAmount0Formated };
+    }
+
+    if (totalVolumeForTokens[token1Address.toLowerCase()]) {
+      totalVolumeForTokens[token1Address.toLowerCase()].totalTokenVolumeForDuration += totalAmount1Formated;
+    } else {
+      totalVolumeForTokens[token1Address.toLowerCase()] = { totalTokenVolumeForDuration: totalAmount1Formated };
+    }
+    
+  }
+
+  const { currentPrice: currentTokenPrice } = await getTokenPriceUsd(token.address, token.symbol);
+  
+  const totalPoolVolumeUsdForDuration = totalVolumeForTokens[token.address.toLowerCase()].totalTokenVolumeForDuration * currentTokenPrice ;
+
+  return { totalPoolVolumeUsdForDuration, totalPoolTradesForDuration }
+
+
+}
+
+async function fetchLogs(
+  client: any,
+  poolContract: string,
+  eventTopic: string,
+  startBlock: number,
+  endBlock: number
+): Promise<Array<Log>> {
+  let currentBlock = startBlock;
+  let logs: Array<Log> = [];
+
+  while (currentBlock <= endBlock) {
+    try {
+      const queryResponse = await client.get(
+        presetQueryLogsOfEvent(poolContract, eventTopic, currentBlock)
+      );
+
+      // Concatenate logs if there are any
+      if (queryResponse.data.logs && queryResponse.data.logs.length > 0 && currentBlock != queryResponse.nextBlock) {
+        logs = logs.concat(queryResponse.data.logs);
+      }
+
+      // Update currentBlock for the next iteration
+      currentBlock = queryResponse.nextBlock;
+
+      // Exit the loop if nextBlock is invalid
+      if (!currentBlock || currentBlock > endBlock) {
+        break;
+      }
+    } catch (error) {
+      console.error("Error fetching logs:", error);
+      break; // Exit loop on error
     }
   }
 
-  const { currentPrice: currentToken0Price } = await getTokenPriceUsd(token0Symbol, token0Symbol);
-  const { currentPrice: currentToken1Price } = await getTokenPriceUsd(token1Symbol, token1Symbol);
-
-  const totalPoolVolumeUsdForDuration = token.address.toLowerCase() == token0Address.toLowerCase() ? 
-    (parseFloat(ethers.utils.formatUnits(totalAmount0.toString(), token0Decimals)) * currentToken0Price) :
-    (parseFloat(ethers.utils.formatUnits(totalAmount1.toString(), token1Decimals)) * currentToken1Price)
-
-  return { totalPoolVolumeUsdForDuration, totalPoolTradesForDuration: queryResult.data.logs.length }
-
-
+  return logs;
 }

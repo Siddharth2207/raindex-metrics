@@ -12,7 +12,6 @@ const openaiToken = process.env.OPENAI_API_KEY as string;
 
 async function fetchAndFilterOrders(token: string , network: string, skip = 0, first = 1000): Promise<{ filteredActiveOrders: Order[]; filteredInActiveOrders: Order[] }> {
   const variables: Variables = { skip, first };
-
   const endpoint = networkConfig[network].subgraphUrl
 
   try {
@@ -67,7 +66,6 @@ async function singleNetwork(token: string, network: string, durationInSeconds: 
       totalTokenExternalTradesForDuration
     } = await analyzeLiquidity(network, token, durationInSeconds);
 
-
     let tokenMetricsLogs = await tokenMetrics(filteredActiveOrders);
     let combinedBalance = await calculateCombinedVaultBalance(filteredActiveOrders.concat(filteredInActiveOrders));
     let { tradesLastForDuration: totalRaindexTradesForDuration, aggregatedResults, processOrderLogMessage } = await volumeMetrics(
@@ -76,7 +74,10 @@ async function singleNetwork(token: string, network: string, durationInSeconds: 
       durationInSeconds
     );
 
-    const totalRaindexVolumeUsd = aggregatedResults.filter((e: any) => {return e.address.toLowerCase() == tokenAddress.toLocaleLowerCase()})[0].totalVolumeForDurationUsd;
+    let totalRaindexVolumeUsd = 0
+    if(aggregatedResults !== undefined && aggregatedResults.length !== 0){
+      totalRaindexVolumeUsd = aggregatedResults.filter((e: any) => {return e.address.toLowerCase() == tokenAddress.toLocaleLowerCase()})[0].totalVolumeForDurationUsd;
+    }
     
     summarizedMessage = `
       Insight 1 : 

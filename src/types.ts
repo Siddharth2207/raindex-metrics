@@ -53,10 +53,9 @@ export interface TokenConfig {
     decimals: number;
     network: string;
     address: string;
-    contractPool: string;
-    poolToken0: string;
-    poolToken1: string;
-    topic0: string;
+    poolsV2: string[];
+    poolsV3: string[];
+
   }
 
 export interface StablesConfig {
