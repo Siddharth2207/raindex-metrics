@@ -1,0 +1,43 @@
+name: Dexscreener API Cronjob
+
+on:
+  schedule:
+    - cron: "0 * * * *" # Runs every hour at the top of the hour
+  workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+  run-curl-requests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Run Curl Requests for Dexscreener
+        run: |
+          addresses=(
+            "0xd0e9c8f5fae381459cf07ec506c1d2896e8b5df6"
+            "0x3c59798620e5fec0ae6df1a19c6454094572ab92"
+            "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270"
+            "0xb5c064f955d8e7f38fe0460c556a72987494ee17"
+            "0x831753dd7087cac61ab5644b308642cc1c33dc13"
+            "0x8f0fb159380176d324542b3a7933f0c2fd0c2bbf"
+            "0x19831cfb53a0dbead9866c43557c1d48dff76567"
+            "0xfe2907dfa8db6e320cdbf45f0aa888f6135ec4f8"
+            "0x655a51e6803faf50d4ace80fa501af2f29c856cf"
+            "0x2c002ffec41568d138acc36f5894d6156398d539"
+            "0x99b2b1a2adb02b38222adcd057783d7e5d1fcc7d"
+            "0x1d80c49bbbcd1c0911346656b529df9e5c2f783d"
+            "0x12e605bc104e93b45e1ad99f9e555f659051c2bb"
+            "0x13e4b8cffe704d3de6f19e52b201d92c21ec18bd"
+            "0x922d8563631b03c2c4cf817f4d18f6883aba0109"
+            "0x16A500Aec6c37F84447ef04E66c57cfC6254cF92"
+          )
+
+          for address in "${addresses[@]}"; do
+            echo "Fetching data for $address"
+            curl -s "https://api.dexscreener.io/latest/dex/search?q=$address" -o "response_$address.json"
+          done
+
+      - name: List Response Files
+        run: ls -lh *.json
