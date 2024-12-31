@@ -661,45 +661,6 @@ export async function analyzeLiquidity(network: string, token: string, durationI
 
   liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
 
-  if (durationInSeconds == 86400) {
-    const liquidityData = await fetchLiquidityData(tokenAddress);
-
-    // Calculate total volumes and trades across all pools
-    const totalPoolVolume = liquidityData.reduce((sum, pool) => sum + pool.volume24h, 0);
-    const totalPoolTrades = liquidityData.reduce((sum, pool) => sum + pool.trades24h, 0);
-
-    // Generate results
-    const liquidityDataAggregated = liquidityData.map((pool: LiquidityPool) => ({
-      dex: pool.dex,
-      pairAddress: pool.pairAddress,
-      totalPoolVolume: pool.volume24h.toFixed(2),
-      totalPoolTrades: pool.trades24h,
-      totalPoolSizeUsd: pool.poolSizeUsd,
-      poolBaseTokenLiquidity: pool.poolBaseTokenLiquidity,
-      poolQuoteTokenLiquidity: pool.poolQuoteTokenLiquidity,
-      h24Buys: pool.h24Buys,
-      h24Sells: pool.h24Sells,
-      priceChange24h: pool.priceChange24h.toFixed(2),
-    }));
-    
-    liquidityAnalysisLog.push(`- Total Pool Trades last 24 hours: ${totalPoolTrades}`);
-    liquidityAnalysisLog.push(`- Total Pool Volume last 24 hours: ${totalPoolVolume} USD`);
-    liquidityDataAggregated.forEach((pool: any) => {
-      liquidityAnalysisLog.push(`  - Dex: ${pool.dex}`);
-      liquidityAnalysisLog.push(`  - Pair Address: ${pool.pairAddress}`);
-      liquidityAnalysisLog.push(`  - Pool Volume: ${pool.totalPoolVolume} USD`);
-      liquidityAnalysisLog.push(`  - Pool Trades: ${pool.totalPoolTrades}`);
-      liquidityAnalysisLog.push(`  - Pool Size: ${pool.totalPoolSizeUsd} USD`);
-      liquidityAnalysisLog.push(`  - Buys: ${pool.h24Buys}`);
-      liquidityAnalysisLog.push(`  - Sell: ${pool.h24Sells}`);
-      liquidityAnalysisLog.push(`  - Price Change: ${pool.priceChange24h}`);
-      liquidityAnalysisLog.push(`  - Base Token Liquidity: ${pool.poolBaseTokenLiquidity}`);
-      liquidityAnalysisLog.push(`  - Quote Token Liquidity: ${pool.poolQuoteTokenLiquidity}`);
-    });
-    totalTokenExternalVolForDurationUsd = totalPoolVolume
-    totalTokenExternalTradesForDuration = totalPoolTrades
-
-  } else {
     const { 
       totalPoolVolumeUsdForDuration,
       totalPoolTradesForDuration, 
@@ -710,9 +671,6 @@ export async function analyzeLiquidity(network: string, token: string, durationI
 
     liquidityAnalysisLog.push(` - Pool Volume for duration : ${totalTokenExternalVolForDurationUsd} USD`);
     liquidityAnalysisLog.push(` - Pool Trades for duration : ${totalTokenExternalTradesForDuration}`);
-      
-  }
-
   return {
     liquidityAnalysisLog,
     totalTokenExternalVolForDurationUsd,
@@ -720,33 +678,60 @@ export async function analyzeLiquidity(network: string, token: string, durationI
   };
 }
 
-async function getBlockNumberForTimePeriod(network: any, seconds: any) {
+async function getBlockNumberForTimePeriod(
+  network: { rpc: string; blockTime: number },
+  seconds: number
+) {
   try {
-    // Validate network object
+    // Validate the network object
     if (!network.rpc || !network.blockTime) {
       throw new Error('Invalid network object. Ensure "rpc" and "blockTime" are provided.');
     }
 
-    // Calculate the number of blocks in the given time period
-    const blocksInPeriod = Math.round(seconds / network.blockTime);
+    if (seconds <= 0) {
+      throw new Error('Invalid time period. Seconds must be greater than 0.');
+    }
 
-    // Fetch the latest block number
-    const response = await axios.post(network.rpc, {
-      jsonrpc: '2.0',
-      method: 'eth_blockNumber',
-      params: [],
-      id: 1,
-    });
+    // Initialize ethers provider
+    const provider = new ethers.providers.JsonRpcProvider(network.rpc);
 
-    const latestBlockHex = response.data.result;
-    const latestBlock = parseInt(latestBlockHex, 16);
+    // Fetch the latest block
+    const latestBlock = await provider.getBlock("latest");
+    const latestBlockNumber = latestBlock.number;
+    const latestTimestamp = latestBlock.timestamp;
 
-    // Calculate the block number for the start of the time period
-    const blockForPeriod = latestBlock - blocksInPeriod;
+    // Calculate the target timestamp
+    const targetTimestamp = latestTimestamp - seconds;
 
-    return { blockForPeriod, latestBlock };
+    // Perform binary search to find the exact block
+    let low = 0;
+    let high = latestBlockNumber;
+    let closestBlock = latestBlockNumber;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const midBlock = await provider.getBlock(mid);
+
+      if (!midBlock) {
+        throw new Error(`Failed to fetch block details for block number ${mid}.`);
+      }
+
+      const blockTimestamp = midBlock.timestamp;
+
+      if (blockTimestamp === targetTimestamp) {
+        closestBlock = mid;
+        break;
+      } else if (blockTimestamp < targetTimestamp) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+        closestBlock = mid; // Update to the closest block above the target
+      }
+    }
+
+    return {blockForPeriod: closestBlock, latestBlock: latestBlock.number};
   } catch (error) {
-    console.error('Error calculating block number:', error);
+    console.error('Error calculating block number:',  error);
     throw error;
   }
 }
@@ -929,5 +914,7 @@ async function fetchLogs(
     }
   }
 
-  return logs;
+  return Array.from(
+       new Map(logs.map((log) => [log.transactionHash, log])).values()
+  );
 }

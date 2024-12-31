@@ -174,16 +174,70 @@ export const tokenConfig: Config = {
     network: 'flare',
     decimals: 18,
     address: '0x1d80c49bbbcd1c0911346656b529df9e5c2f783d',
-    poolsV2: [],
-    poolsV3: []
+    poolsV2: [
+      '0xeb9299f3f40913cf4b71001ac9f66fd81144573a',
+      '0x2eb870bd9ed4f9f99dc348e2a76ab2e69cf7b525',
+      '0x86c9b716c9e69f5234587b58a6bc14c9aece19a3',
+      '0x32df95c940c445699f7f005d3892c33799677dc7',
+      '0xb1ec7ef55fa2e84eb6ff9ff0fa1e33387f892f68',
+      '0xdf4b31b81d59eca0cfc30ecb2beb36eaebaf7a49',
+      '0x3f50f880041521738fa88c46cdf7e0d8eeb11aa2',
+      '0xff1b852a0582bf87e69fad114560595fc5cf1212',
+      '0x66485b4fbaa124f86437c00220b3b769ff2a0c91',
+      '0x53de93596e1b4362dd9c02f9ad0a7bf78f54ce9e',
+      '0x80a08bbabb0a5c51a9ae53211df09ef23debd4f3',
+      '0xc1c44bbe0764104098c0b6aa0ba5e97892a1cf30',
+      '0x32fd7858393918a984da6ee279eca27f630a1c02'
+    ],
+    poolsV3: [
+      '0x346ddd9858708adaf9e1879264a5c1584fb541be',
+      '0x3bc1ecbcd645e525508c570a0ff04480a5614a86',
+      '0xc9baba3f36ccaa54675deecc327ec7eaa48cb97d',
+      '0xaff8e67248e81eb63941b7ef769758e42cef9189',
+      '0x164857e59cde0848910dac791650da52db736dc2',
+      '0x4a885ed3ec3f3e657440422e93c15a73edf6a909',
+      '0x7666ab2482257578113194b9a5e9d3bd7dc759d9',
+      '0x9a3215f8b0d128816f75175c9fd74e7ebbd987da',
+      '0x507ba799d81c8e7848fa4e0c966bf96a7e28b5cd',
+      '0xe6fbab907141a578c51326c25300950a1c38b27c',
+      '0x46ff03da3081e5976eeff542cdaa6453d2dd1286',
+      '0xcaa52e02504e6c637e307e0a3d9675e659016cd8',
+      '0xf9b24c2a90e27b452911686866559e582ab006b6',
+      '0x45a914901529f0ca96812ee5e6158f6684beb11e',
+      '0xeee7bb7f370b7d5afd39131710975ce649ca6d3f',
+      '0x8a08af86e010757d6d9af209293e587433a734e5'
+    ]
   },
   sFLR: {
     symbol: 'sFLR',
     network: 'flare',
     decimals: 18,
     address: '0x12e605bc104e93b45e1ad99f9e555f659051c2bb',
-    poolsV2: [],
-    poolsV3: []
+    poolsV2: [
+      '0x3f50f880041521738fa88c46cdf7e0d8eeb11aa2',
+      '0x7e8eb77feb4b3fe2c58b493df6ce38875806bebb',
+      '0x0a6b1db2c92fbda09520cf6dc50c63da39a6fc66',
+      '0x9150536ce451be336de88dbe22bd8bc5f9fca498',
+      '0xf06eebf7a66c80760bd8343a6bce84c9d61879ee',
+      '0xb7c6f8cff4d5b7266225f624e03a27be0998c726'
+    ],
+    poolsV3: [
+      '0xc9baba3f36ccaa54675deecc327ec7eaa48cb97d',
+      '0x9a3215f8b0d128816f75175c9fd74e7ebbd987da',
+      '0x25b4f3930934f0a3cbb885c624ecee75a2917144',
+      '0x46ff03da3081e5976eeff542cdaa6453d2dd1286',
+      '0xd75d57a09e42e6aa336c274d08164b04aa7e7ddb',
+      '0x2dbec0d3812af232ae185e84b9cf172f34a9acb9',
+      '0x4f5df684a9177f612dfd3697a71b782020de1940',
+      '0x623fe69b78c6bbaa71bcce2ae2c7dea57cfc5ea3',
+      '0xb95bf4c67eec434db728ae673d92b8ffbe982e7f',
+      '0x71f62232d470f87ad8db616fb68b0a69b5a3b594',
+      '0xa6ed1a04b9b6b0a6cf3926510546baf5bbe44e5e',
+      '0x4f53ac9fce3e9739b3e589015888a683c24fac04',
+      '0x8c5c1ab9b96ad885e2c5bd83d30f2d109ea20311',
+      '0x4ddc7854e0d3008d2b85e5ed1529d726711ed05c',
+      '0x942a493fe65172e42d276d07a612b678914ea402'
+    ]
   },
   PAI: {
     symbol: 'PAI',
