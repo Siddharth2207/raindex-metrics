@@ -98,7 +98,9 @@ async function singleNetwork(token: string, network: string, durationInSeconds: 
     
     
     const markdownInput = `
-# Network Analysis for ${network.toUpperCase()}
+# Network Analysis for ${network.toUpperCase()} - ${token.toUpperCase()}
+# From: ${(new Date(Date.now() - 24 * 60 * 60 * 1000)).toLocaleString()}
+# To: ${(new Date()).toLocaleString()}
 
 ## Raindex Order Metrics
 \`\`\`
