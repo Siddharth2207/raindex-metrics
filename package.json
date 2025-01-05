@@ -5,8 +5,8 @@
   "author": "Rain Protocol",
   "scripts": {
     "build": "tsc",
-    "lint": "eslint ./src/metrics/volumeMetrics.ts",
-    "lint-fix": "eslint ./src/metrics/volumeMetrics.ts --fix"
+    "lint": "eslint .",
+    "lint-fix": "eslint . --fix"
   },
   "keywords": [],
   "license": "ISC",

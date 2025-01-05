@@ -30,7 +30,6 @@ export default [
         rules: {
             "no-empty": "off",
             "no-undef": "off",
-            "no-console": "error",
             "prefer-const": "error",
             "no-trailing-spaces": "error",
             "@typescript-eslint/no-explicit-any": "off",
