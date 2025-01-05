@@ -1,5 +1,8 @@
-// Define the GraphQL query
-export const query = `
+
+/**
+ * Query to fetch orders
+*/
+export const fetchOrderQuery = `
   query OrdersListQuery($skip: Int = 0, $first: Int = 1000) {
     orders(
       orderBy: timestampAdded
@@ -45,7 +48,10 @@ export const query = `
   }
 `;
 
-export const tradeQuery = `query OrderTakesListQuery($orderHash: Bytes!, $skip: Int = 0, $first: Int = 1000) {
+/**
+ * Query to fetch trades under a particular order
+*/
+export const fetchTradesQuery = `query OrderTakesListQuery($orderHash: Bytes!, $skip: Int = 0, $first: Int = 1000) {
   trades(orderBy: timestamp, orderDirection: desc, skip: $skip, first: $first, where: {
     order_: {
       orderHash: $orderHash

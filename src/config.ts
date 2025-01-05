@@ -1,6 +1,37 @@
 import { Config, NetworkConfigurations } from './types';
 
-// Example usage of the types
+
+/**
+ * Allowed Networks
+*/
+export const allowedNetworks = ['polygon', 'mainnet', 'arbitrum', 'base', 'flare', 'bsc'];
+
+/**
+ * Allowed tokens
+*/
+export const allowedTokens = [
+  'PAI',
+  'LOCK',
+  'IOEN',
+  'MNW',
+  'TFT',
+  'WLTH',
+  'PAID',
+  'LUCKY',
+  'WPOL',
+  'QUICK_OLD',
+  'QUICK_NEW',
+  'WFLR',
+  'sFLR',
+  'cysFLR',
+];
+
+/**
+ * Allowed Durations
+*/
+export const allowedDurations = ['daily', 'weekly', 'monthly'];
+
+
 export const tokenConfig: Config = {
   IOEN: {
     symbol: 'IOEN',
