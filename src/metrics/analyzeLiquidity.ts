@@ -275,7 +275,7 @@ async function analyzeHyperSyncData(token: any, network: any, durationInSeconds:
             if (log !== undefined) {
                 const logBytes = ethers.utils.arrayify(log);
                 const decodedAmount = ethers.utils.defaultAbiCoder.decode(
-                    ["int256", "int256", "uint160", "uint128", "int24","uint128","uint128"],
+                    ["int256", "int256", "uint160", "uint128", "int24", "uint128", "uint128"],
                     logBytes,
                 );
                 totalAmount0 = totalAmount0.add(ethers.BigNumber.from(decodedAmount[0]).abs());
