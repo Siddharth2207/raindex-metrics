@@ -14,11 +14,26 @@ jobs:
           - network: polygon
             token: IOEN
             duration: weekly
+          - network: polygon
+            token: MNW
+            duration: weekly
+          - network: polygon
+            token: QUICK_OLD
+            duration: weekly
+          - network: polygon
+            token: QUICK_NEW
+            duration: weekly
           - network: bsc
             token: TFT
-            duration: weekly 
+            duration: weekly
           - network: base
             token: WLTH
+            duration: weekly  
+          - network: flare
+            token: sFLR
+            duration: weekly
+          - network: flare
+            token: cysFLR
             duration: weekly  
 
     steps:
