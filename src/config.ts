@@ -23,6 +23,7 @@ export const allowedTokens = [
     "WFLR",
     "sFLR",
     "cysFLR",
+    "KIMA",
 ];
 
 /**
@@ -38,6 +39,7 @@ export const tokenConfig: Config = {
         address: "0xd0e9c8f5fae381459cf07ec506c1d2896e8b5df6",
         poolsV2: ["0x316bc12871c807020ef8c1bc7771061c4e7a04ed"],
         poolsV3: [],
+        poolsPancakSwapV3: [],
     },
     MNW: {
         symbol: "MNW",
@@ -49,6 +51,7 @@ export const tokenConfig: Config = {
             "0x1abc944412f8c8cfafb3fe7764fa954739aab044",
             "0x426a2c62bf87d377d7d2efa13da2556109dfd098",
         ],
+        poolsPancakSwapV3: [],
     },
     WPOL: {
         symbol: "WPOL",
@@ -86,6 +89,7 @@ export const tokenConfig: Config = {
             "0x8c862d100b94d95a49d91958c9e8c2c348d00f04",
             "0xef45e5814cc503fd3691dcd9128f4200d4e46d02",
         ],
+        poolsPancakSwapV3: [],
     },
     QUICK_OLD: {
         symbol: "QUICK",
@@ -104,6 +108,7 @@ export const tokenConfig: Config = {
             "0x14ef96a0f7d738db906bdd5260e46aa47b1e6e45",
             "0xa14b36e7ab49bb04570d334c4cf9df609340b17b",
         ],
+        poolsPancakSwapV3: [],
     },
     QUICK_NEW: {
         symbol: "QUICK",
@@ -118,6 +123,7 @@ export const tokenConfig: Config = {
             "0xdea8f0f1e6e98c6aee891601600e5fba294b5e36",
         ],
         poolsV3: ["0x1d7f2e4295981af5cc005d936ac437588b353596"],
+        poolsPancakSwapV3: [],
     },
     TFT: {
         symbol: "TFT",
@@ -126,6 +132,7 @@ export const tokenConfig: Config = {
         address: "0x8f0fb159380176d324542b3a7933f0c2fd0c2bbf",
         poolsV2: ["0x4a2dbaa979a3f4cfb8004ea5743faf159dd2665a"],
         poolsV3: [],
+        poolsPancakSwapV3: [],
     },
     cysFLR: {
         symbol: "cysFLR",
@@ -144,6 +151,7 @@ export const tokenConfig: Config = {
             "0x91dad908a9cd0c07d46b84a0322890bafa4c5d9a",
             "0x6a200b0191daa9f877a13b720ebec676827da5a8",
         ],
+        poolsPancakSwapV3: [],
     },
     cUSDX: {
         symbol: "cUSDX",
@@ -157,6 +165,7 @@ export const tokenConfig: Config = {
             "0x073fd421aba7bb72442b0d6ff4fd6da1a802525e",
             "0x395242d0e9e7d579e76c188a85afd382531680e6",
         ],
+        poolsPancakSwapV3: [],
     },
     PAID: {
         symbol: "PAID",
@@ -165,6 +174,7 @@ export const tokenConfig: Config = {
         address: "0x655a51e6803faf50d4ace80fa501af2f29c856cf",
         poolsV2: [],
         poolsV3: ["0x1e1367dcebe168554e82552e0e659a4116926d10"],
+        poolsPancakSwapV3: [],
     },
     LUCKY: {
         symbol: "LUCKY",
@@ -173,6 +183,7 @@ export const tokenConfig: Config = {
         address: "0x2c002ffec41568d138acc36f5894d6156398d539",
         poolsV2: [],
         poolsV3: ["0xb36d05a38eb28c424338c7549cc2947bcb3eda9e"],
+        poolsPancakSwapV3: [],
     },
     WLTH: {
         symbol: "WLTH",
@@ -181,6 +192,16 @@ export const tokenConfig: Config = {
         address: "0x99b2b1a2adb02b38222adcd057783d7e5d1fcc7d",
         poolsV2: [],
         poolsV3: ["0x1536ee1506e24e5a36be99c73136cd82907a902e"],
+        poolsPancakSwapV3: [],
+    },
+    KIMA: {
+        symbol: "KIMA",
+        network: "arbitrum",
+        decimals: 18,
+        address: "0x94fcd9c18f99538c0f7c61c5500ca79f0d5c4dab",
+        poolsV2: ["0x29bb566b8aef8b961d6aa90ee28a6889bc94f5d9"],
+        poolsV3: ["0xe4bfcc208f3447cc5d2f5ccb40c52778d4be2004"],
+        poolsPancakSwapV3: ["0xe4bfcc208f3447cc5d2f5ccb40c52778d4be2004"],
     },
     WFLR: {
         symbol: "WFLR",
@@ -220,6 +241,7 @@ export const tokenConfig: Config = {
             "0xeee7bb7f370b7d5afd39131710975ce649ca6d3f",
             "0x8a08af86e010757d6d9af209293e587433a734e5",
         ],
+        poolsPancakSwapV3: [],
     },
     sFLR: {
         symbol: "sFLR",
@@ -251,6 +273,7 @@ export const tokenConfig: Config = {
             "0x4ddc7854e0d3008d2b85e5ed1529d726711ed05c",
             "0x942a493fe65172e42d276d07a612b678914ea402",
         ],
+        poolsPancakSwapV3: [],
     },
     PAI: {
         symbol: "PAI",
@@ -259,6 +282,7 @@ export const tokenConfig: Config = {
         address: "0x13e4b8cffe704d3de6f19e52b201d92c21ec18bd",
         poolsV2: ["0x24b8c320a4505057cb1e4808d200535ec5320817"],
         poolsV3: [],
+        poolsPancakSwapV3: [],
     },
     LOCK: {
         symbol: "LOCK",
@@ -267,6 +291,7 @@ export const tokenConfig: Config = {
         address: "0x922d8563631b03c2c4cf817f4d18f6883aba0109",
         poolsV2: [],
         poolsV3: ["0x7d45a2557becd766a285d07a4701f5c64d716e2f"],
+        poolsPancakSwapV3: [],
     },
     UMJA: {
         symbol: "UMJA",
@@ -275,6 +300,7 @@ export const tokenConfig: Config = {
         address: "0x16A500Aec6c37F84447ef04E66c57cfC6254cF92",
         poolsV2: [],
         poolsV3: ["0x551579dc8bdfa60f6d21816fb25429ee49b570d5"],
+        poolsPancakSwapV3: [],
     },
 };
 

@@ -46,6 +46,7 @@ export interface TokenConfig {
     address: string;
     poolsV2: string[];
     poolsV3: string[];
+    poolsPancakSwapV3: string[];
 }
 
 export interface StablesConfig {

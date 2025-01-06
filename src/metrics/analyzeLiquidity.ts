@@ -246,6 +246,71 @@ async function analyzeHyperSyncData(token: any, network: any, durationInSeconds:
         }
     }
 
+    for (let i = 0; i < token.poolsPancakSwapV3.length; i++) {
+        const poolContractAddress = token.poolsPancakSwapV3[i];
+        const poolContract = new ethers.Contract(poolContractAddress, uniswapV2PoolAbi, provider);
+        const token0Address = await poolContract.token0();
+        const token1Address = await poolContract.token1();
+
+        const token0Contract = new ethers.Contract(token0Address, erc20Abi, provider);
+        const token1Contract = new ethers.Contract(token1Address, erc20Abi, provider);
+        const token0Decimals = await token0Contract.decimals();
+        const token1Decimals = await token1Contract.decimals();
+
+        let totalAmount0 = ethers.BigNumber.from(0);
+        let totalAmount1 = ethers.BigNumber.from(0);
+
+        const swapQueryResult = await fetchLogs(
+            hyperSyncClinet,
+            poolContractAddress,
+            "0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83",
+            blockForPeriod,
+            latestBlock,
+        );
+
+        totalPoolTradesForDuration += swapQueryResult.length;
+        for (let i = 0; i < swapQueryResult.length; i++) {
+            const log = swapQueryResult[i]?.data;
+
+            if (log !== undefined) {
+                const logBytes = ethers.utils.arrayify(log);
+                const decodedAmount = ethers.utils.defaultAbiCoder.decode(
+                    ["int256", "int256", "uint160", "uint128", "int24", "uint128", "uint128"],
+                    logBytes,
+                );
+                totalAmount0 = totalAmount0.add(ethers.BigNumber.from(decodedAmount[0]).abs());
+                totalAmount1 = totalAmount1.add(ethers.BigNumber.from(decodedAmount[1]).abs());
+            } else {
+                console.error("Hex string is undefined!");
+            }
+        }
+
+        const totalAmount0Formated = parseFloat(
+            ethers.utils.formatUnits(totalAmount0.toString(), token0Decimals),
+        );
+        const totalAmount1Formated = parseFloat(
+            ethers.utils.formatUnits(totalAmount1.toString(), token1Decimals),
+        );
+
+        if (totalVolumeForTokens[token0Address.toLowerCase()]) {
+            totalVolumeForTokens[token0Address.toLowerCase()].totalTokenVolumeForDuration +=
+                totalAmount0Formated;
+        } else {
+            totalVolumeForTokens[token0Address.toLowerCase()] = {
+                totalTokenVolumeForDuration: totalAmount0Formated,
+            };
+        }
+
+        if (totalVolumeForTokens[token1Address.toLowerCase()]) {
+            totalVolumeForTokens[token1Address.toLowerCase()].totalTokenVolumeForDuration +=
+                totalAmount1Formated;
+        } else {
+            totalVolumeForTokens[token1Address.toLowerCase()] = {
+                totalTokenVolumeForDuration: totalAmount1Formated,
+            };
+        }
+    }
+
     const { currentPrice: currentTokenPrice } = await getTokenPriceUsd(token.address, token.symbol);
 
     const totalPoolVolumeUsdForDuration =

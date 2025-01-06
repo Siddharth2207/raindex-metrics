@@ -12,6 +12,7 @@ on:
           - bsc
           - base
           - flare
+          - arbitrum
 
       token:
         description: 'TOKEN'
@@ -32,6 +33,7 @@ on:
           - WFLR
           - sFLR
           - cysFLR
+          - KIMA
       
       duration:
         description: 'Duration for metrics'
