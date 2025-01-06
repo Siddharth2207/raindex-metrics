@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         include:
+          - network: polygon
             token: [IOEN]
           - network: bsc
             token: [TFT]
