@@ -13,10 +13,11 @@ jobs:
       matrix:
         include:
           - network: polygon
-            token: [IOEN]
+            token: IOEN
+            duration: weekly
           - network: bsc
-            token: [TFT]
-        duration: [weekly]
+            token: TFT
+            duration: weekly
 
     steps:
       - uses: actions/checkout@v4
