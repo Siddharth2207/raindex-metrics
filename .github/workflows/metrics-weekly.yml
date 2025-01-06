@@ -11,12 +11,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - network: mainnet
-            token: PAI
-            duration: weekly
-          - network: mainnet
-            token: LOCK
-            duration: weekly
           - network: polygon
             token: IOEN
             duration: weekly
@@ -29,24 +23,12 @@ jobs:
           - network: polygon
             token: QUICK_NEW
             duration: weekly
-          - network: polygon
-            token: WPOL
-            duration: weekly
           - network: bsc
             token: TFT
-            duration: weekly 
+            duration: weekly
           - network: base
             token: WLTH
             duration: weekly  
-          - network: base
-            token: PAID
-            duration: weekly
-          - network: base
-            token: LUCKY
-            duration: weekly  
-          - network: flare
-            token: WFLR
-            duration: weekly
           - network: flare
             token: sFLR
             duration: weekly
