@@ -1,0 +1,69 @@
+name: "Raindex Metrics Scheduled Run"
+
+on:
+  schedule:
+    # Runs every day at 12:00 UTC
+    - cron: "*/30 * * * *"
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+            token: [IOEN]
+          - network: bsc
+            token: [TFT]
+        duration: [weekly]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - run: |
+          sudo rm -rf \
+            "$AGENT_TOOLSDIRECTORY" \
+            /opt/google/chrome \
+            /opt/microsoft/msedge \
+            /opt/microsoft/powershell \
+            /opt/pipx \
+            /usr/lib/mono \
+            /usr/local/julia* \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/dotnet \
+            /usr/share/swift
+          df -h
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v4
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+
+      - name: Install and Build Dependencies
+        run: nix develop -c build-js-bindings
+
+      - name: Raindex Metrics
+        env:
+          TOKEN_SYMBOL: ${{ matrix.token }}
+          NETWORK: ${{ matrix.network }}
+          DURATION: ${{ matrix.duration }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          RUN_DATETIME=$(date -u '+%Y-%m-%d-%H-%M-%S-UTC')
+          echo "RUN_DATETIME=$(date -u '+%Y-%m-%d-%H-%M-%S-UTC')" >> $GITHUB_ENV
+          echo "NETWORK=$NETWORK"
+          echo "TOKEN_SYMBOL=$TOKEN_SYMBOL"
+          echo "DURATION=$DURATION"
+          echo "RUN_DATETIME=$RUN_DATETIME"
+          nix develop -c raindex-metrics > ./$NETWORK-$TOKEN_SYMBOL-$DURATION-$RUN_DATETIME.md
+
+      - name: Upload markdown file
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.network }}-${{ matrix.token }}-${{ matrix.duration }}-${{ env.RUN_DATETIME }}.md
+          path: ${{ matrix.network }}-${{ matrix.token }}-${{ matrix.duration }}-${{ env.RUN_DATETIME }}.md
