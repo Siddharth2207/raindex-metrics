@@ -23,6 +23,7 @@ export const allowedTokens = [
     "WFLR",
     "sFLR",
     "cysFLR",
+    "KIMA"
 ];
 
 /**
@@ -181,6 +182,18 @@ export const tokenConfig: Config = {
         address: "0x99b2b1a2adb02b38222adcd057783d7e5d1fcc7d",
         poolsV2: [],
         poolsV3: ["0x1536ee1506e24e5a36be99c73136cd82907a902e"],
+    },
+    KIMA: {
+        symbol: "KIMA",
+        network: "arbitrum",
+        decimals: 18,
+        address: "0x94fcd9c18f99538c0f7c61c5500ca79f0d5c4dab",
+        poolsV2: [
+            "0x29bb566b8aef8b961d6aa90ee28a6889bc94f5d9"
+        ],
+        poolsV3: [
+            "0xe4bfcc208f3447cc5d2f5ccb40c52778d4be2004"
+        ],
     },
     WFLR: {
         symbol: "WFLR",
