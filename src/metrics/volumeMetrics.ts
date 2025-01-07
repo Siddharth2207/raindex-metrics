@@ -8,10 +8,11 @@ export async function volumeMetrics(
     network: string,
     filteredOrders: any[],
     durationInSeconds: number,
+    token: string
 ): Promise<any> {
     const endpoint = networkConfig[network].subgraphUrl;
     const { tradesLastForDuration, aggregatedResults, processOrderLogMessage } =
-        await processOrdersWithAggregation(endpoint, filteredOrders, durationInSeconds);
+        await processOrdersWithAggregation(endpoint, filteredOrders, durationInSeconds, token);
 
     return { tradesLastForDuration, aggregatedResults, processOrderLogMessage };
 }
@@ -33,6 +34,7 @@ async function processOrdersWithAggregation(
     endpoint: string,
     filteredOrders: any[],
     durationInSeconds: number,
+    token: string
 ): Promise<{
     tradesLastForDuration: number;
     aggregatedResults: any[];
@@ -105,7 +107,7 @@ async function processOrdersWithAggregation(
         ).length;
 
     const { tradeDistributionForDuration, volumeDistributionForDuration } =
-        await calculateTradeDistribution(orderTrades, durationInSeconds);
+        await calculateTradeDistribution(orderTrades, durationInSeconds, token);
 
     let logString = "For Duration";
     if (durationInSeconds === 86400) {
@@ -165,6 +167,7 @@ async function processOrdersWithAggregation(
 async function calculateTradeDistribution(
     orderTrades: any[],
     durationInSeconds: number,
+    token: string
 ): Promise<{
     tradeDistributionForDuration: any[];
     volumeDistributionForDuration: any[];
@@ -190,12 +193,12 @@ async function calculateTradeDistribution(
     }));
 
     const { volumeDistributionForDuration, tokenVolumesPerOrder } =
-        await getVolumeDistribution(orderTradesForDuration);
+        await getVolumeDistribution(orderTradesForDuration, token);
 
     return { tradeDistributionForDuration, volumeDistributionForDuration };
 }
 
-async function getVolumeDistribution(orderTradesDuration: any[]) {
+async function getVolumeDistribution(orderTradesDuration: any[], token: string) {
     const tokenVolumesPerOrder: Record<
         string,
         Record<
@@ -212,7 +215,7 @@ async function getVolumeDistribution(orderTradesDuration: any[]) {
             }
         >
     > = {};
-
+    const {address: tokenAddress} = tokenConfig[token]
     for (let i = 0; i < orderTradesDuration.length; i++) {
         const { orderHash, trades } = orderTradesDuration[i];
 
@@ -292,7 +295,11 @@ async function getVolumeDistribution(orderTradesDuration: any[]) {
     const totalVolumeUsd = Object.values(tokenVolumesPerOrder).reduce((total, tokens) => {
         return (
             total +
-            Object.values(tokens).reduce(
+            Object.values(tokens)
+            .filter((token: any) => {
+                return token.address.toLowerCase() === tokenAddress.toLowerCase()
+            })
+            .reduce(
                 (sum, token) => sum + parseFloat(token.totalVolumeDurationUsd),
                 0,
             )
@@ -302,7 +309,9 @@ async function getVolumeDistribution(orderTradesDuration: any[]) {
     // Calculate volume distribution for each order
     const volumeDistributionForDuration = Object.entries(tokenVolumesPerOrder).map(
         ([orderHash, tokens]) => {
-            const orderTotalVolumeUsd = Object.values(tokens).reduce(
+            const orderTotalVolumeUsd = Object.values(tokens).filter((token: any) => {
+                return token.address.toLowerCase() === tokenAddress.toLowerCase()
+            }).reduce(
                 (sum, token) => sum + parseFloat(token.totalVolumeDurationUsd),
                 0,
             );

@@ -161,7 +161,7 @@ async function generateReportForToken(token: string, network: string, duration: 
             tradesLastForDuration: totalRaindexTradesForDuration,
             aggregatedResults,
             processOrderLogMessage,
-        } = await volumeMetrics(network, allOrders, durationInSeconds);
+        } = await volumeMetrics(network, allOrders, durationInSeconds, token);
 
         // Calculate Raindex volume
         const tokenAddress = tokenConfig[token]?.address.toLowerCase();
