@@ -1,7 +1,7 @@
 {
   "name": "raindex-reports",
-  "version": "1.0.0",
-  "description": "A CLI tool to generate reports on volume and trades with external liquidity as well as raindex trades.",
+  "version": "1.0.3",
+  "description": "A CLI tool to generate reports on volume and trades with external liquidity as well as Raindex trades.",
   "author": "Rain Protocol",
   "scripts": {
     "build": "tsc",
@@ -11,8 +11,11 @@
   "keywords": [],
   "license": "ISC",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
   "dependencies": {
-    "@envio-dev/hypersync-client": "^0.6.3",
     "@types/yargs": "^17.0.33",
     "axios": "=1.7.7",
     "commander": "^13.0.0",

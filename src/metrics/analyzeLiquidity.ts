@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { getTokenPriceUsd } from "../priceUtils";
 import { tokenConfig, networkConfig } from "../config";
-import { HypersyncClient, presetQueryLogsOfEvent, Log } from "@envio-dev/hypersync-client";
+import axios from "axios";
 
 export async function analyzeLiquidity(
     network: string,
@@ -89,9 +89,7 @@ async function getBlockNumberForTimePeriod(
 
 async function analyzeHyperSyncData(token: any, network: any, durationInSeconds: number) {
     // Create hypersync client using the mainnet hypersync endpoint
-    const hyperSyncClinet = HypersyncClient.new({
-        url: `https://${network.chainId}.hypersync.xyz`,
-    });
+    const hyperSyncClinet = `https://${network.chainId}.hypersync.xyz/query`;
 
     const { blockForPeriod, latestBlock } = await getBlockNumberForTimePeriod(
         network,
@@ -326,27 +324,52 @@ async function fetchLogs(
     eventTopic: string,
     startBlock: number,
     endBlock: number,
-): Promise<Array<Log>> {
+): Promise<Array<any>> {
     let currentBlock = startBlock;
-    let logs: Array<Log> = [];
+    let logs: Array<any> = [];
 
     while (currentBlock <= endBlock) {
         try {
-            const queryResponse = await client.get(
-                presetQueryLogsOfEvent(poolContract, eventTopic, currentBlock),
-            );
+            const queryResponse = (await axios.post(client, {
+                from_block: currentBlock,
+                logs: [
+                  {
+                    address: [poolContract],
+                    topics: [
+                        [
+                            eventTopic
+                        ]
+                    ]
+                  }
+                ],
+                field_selection: {
+                  log: [
+                    "block_number",
+                    "log_index",
+                    "transaction_index",
+                    "transaction_hash",
+                    "data",
+                    "address",
+                    "topic0",
+                    "topic1",
+                    "topic2",
+                    "topic3"
+                  ]
+          
+                }
+            })).data;
 
             // Concatenate logs if there are any
             if (
-                queryResponse.data.logs &&
-                queryResponse.data.logs.length > 0 &&
-                currentBlock != queryResponse.nextBlock
+                queryResponse.data &&
+                queryResponse.data.length > 0 &&
+                currentBlock != queryResponse.next_block
             ) {
-                logs = logs.concat(queryResponse.data.logs);
+                logs = logs.concat(queryResponse.data);
             }
 
             // Update currentBlock for the next iteration
-            currentBlock = queryResponse.nextBlock;
+            currentBlock = queryResponse.next_block;
 
             // Exit the loop if nextBlock is invalid
             if (!currentBlock || currentBlock > endBlock) {
@@ -358,5 +381,6 @@ async function fetchLogs(
         }
     }
 
-    return Array.from(new Map(logs.map((log) => [log.transactionHash, log])).values());
+    return Array.from(new Map(logs.flatMap(item => item.logs).map((log) => [log.transaction_hash, log])).values());
+    
 }
