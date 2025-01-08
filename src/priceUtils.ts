@@ -1,5 +1,5 @@
 const axios = require("axios");
-import { TokenPair, TokenPrice } from "./types";
+import { TokenPrice } from "./types";
 
 /**
  * Fetches the USD price for a given token, considering special cases and 24-hour price changes.

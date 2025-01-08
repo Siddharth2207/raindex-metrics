@@ -129,7 +129,7 @@ async function processOrdersWithAggregation(
     );
 
     // Format aggregated volumes for printing
-    let aggregatedResults = Object.entries(aggregatedVolumes).map(([address, data]) => ({
+    let aggregatedResults = Object.entries(aggregatedVolumes).map(([_, data]) => ({
         token: data.symbol,
         address: data.address,
         decimals: data.decimals,
@@ -192,7 +192,7 @@ async function calculateTradeDistribution(
         tradePercentage: ((order.trades.length / totalTradesForDuration) * 100).toFixed(2),
     }));
 
-    const { volumeDistributionForDuration, tokenVolumesPerOrder } = await getVolumeDistribution(
+    const { volumeDistributionForDuration } = await getVolumeDistribution(
         orderTradesForDuration,
         token,
     );
@@ -372,7 +372,7 @@ function calculateVolumes(trades: any[], currentTimestamp: number, durationInSec
     });
 
     // Format volumes
-    return Object.entries(tokenVolumes).map(([tokenAddress, data]) => {
+    return Object.entries(tokenVolumes).map(([_, data]) => {
         const { inVolumeForDuration, outVolumeForDuration, decimals, address, symbol } = data;
 
         const totalVolumeForDuration = inVolumeForDuration.add(outVolumeForDuration);
@@ -394,7 +394,7 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
             const tokenAddress = item.address;
 
             // Fetch the current price of the token
-            const { averagePrice, currentPrice } = await getTokenPriceUsd(
+            const { currentPrice } = await getTokenPriceUsd(
                 tokenAddress,
                 item.symbol,
             );

@@ -4,9 +4,6 @@ import { fetchOrderQuery } from "./queries";
 import {
     tokenConfig,
     networkConfig,
-    allowedNetworks,
-    allowedTokens,
-    allowedDurations,
 } from "./config";
 import {
     orderMetrics,
@@ -38,7 +35,6 @@ export async function fetchAndFilterOrders(
 
         const {
             symbol: tokenSymbol,
-            decimals: tokenDecimals,
             address: tokenAddress,
         } = tokenConfig[token];
 
