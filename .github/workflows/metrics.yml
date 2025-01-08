@@ -53,6 +53,7 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          ref: metrics-consolidate
 
       # https://github.com/actions/runner-images/issues/2840#issuecomment-2272410832
       - run: |

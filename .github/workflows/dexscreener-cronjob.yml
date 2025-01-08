@@ -12,6 +12,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+        ref: metrics-consolidate
 
       - name: Run Curl Requests for Dexscreener
         run: |
