@@ -330,46 +330,41 @@ async function fetchLogs(
 
     while (currentBlock <= endBlock) {
         try {
-            const queryResponse = (await axios.post(client, {
+            const queryResponse = await axios.post(client, {
                 from_block: currentBlock,
                 logs: [
-                  {
-                    address: [poolContract],
-                    topics: [
-                        [
-                            eventTopic
-                        ]
-                    ]
-                  }
+                    {
+                        address: [poolContract],
+                        topics: [[eventTopic]],
+                    },
                 ],
                 field_selection: {
-                  log: [
-                    "block_number",
-                    "log_index",
-                    "transaction_index",
-                    "transaction_hash",
-                    "data",
-                    "address",
-                    "topic0",
-                    "topic1",
-                    "topic2",
-                    "topic3"
-                  ]
-          
-                }
-            })).data;
+                    log: [
+                        "block_number",
+                        "log_index",
+                        "transaction_index",
+                        "transaction_hash",
+                        "data",
+                        "address",
+                        "topic0",
+                        "topic1",
+                        "topic2",
+                        "topic3",
+                    ],
+                },
+            });
 
             // Concatenate logs if there are any
             if (
-                queryResponse.data &&
-                queryResponse.data.length > 0 &&
-                currentBlock != queryResponse.next_block
+                queryResponse.data.data &&
+                queryResponse.data.data.length > 0 &&
+                currentBlock != queryResponse.data.next_block
             ) {
-                logs = logs.concat(queryResponse.data);
+                logs = logs.concat(queryResponse.data.data);
             }
 
             // Update currentBlock for the next iteration
-            currentBlock = queryResponse.next_block;
+            currentBlock = queryResponse.data.next_block;
 
             // Exit the loop if nextBlock is invalid
             if (!currentBlock || currentBlock > endBlock) {
@@ -381,6 +376,10 @@ async function fetchLogs(
         }
     }
 
-    return Array.from(new Map(logs.flatMap(item => item.logs).map((log) => [log.transaction_hash, log])).values());
-    
+    return Array.from(
+        new Map(
+            logs.flatMap((item) => item.logs).map((log) => [log.transaction_hash, log]),
+        ).values()
+    )
+
 }
