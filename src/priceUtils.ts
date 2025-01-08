@@ -1,4 +1,4 @@
-import axios from "axios";
+const axios = require("axios");
 import { TokenPair, TokenPrice } from "./types";
 
 /**
@@ -15,7 +15,7 @@ export async function getTokenPriceUsd(
                 currentPrice: 1,
             };
         }
-        const response = await axios.get<{ pairs: TokenPair[] }>(
+        const response = await axios.get(
             `https://api.dexscreener.io/latest/dex/search?q=${tokenAddress}`,
         );
 
@@ -31,7 +31,7 @@ export async function getTokenPriceUsd(
         // Handle WFLR special case
         if (tokenAddress.toLowerCase() === "0x1d80c49bbbcd1c0911346656b529df9e5c2f783d") {
             const specialPair = pairs.find(
-                (pair) =>
+                (pair: any) =>
                     pair.baseToken.address.toLowerCase() ===
                         "0xfbda5f676cb37624f28265a144a48b0d6e87d3b6".toLowerCase() &&
                     pair.quoteToken.address.toLowerCase() ===
@@ -71,7 +71,7 @@ export async function getTokenPriceUsd(
         return { averagePrice, currentPrice };
     } catch (error) {
         if (axios.isAxiosError(error)) {
-            console.error(`Error fetching price for token ${tokenAddress}: ${error.message}`);
+            console.error(`Error fetching price for token ${tokenAddress}: ${error}`);
         } else {
             console.error(`Unexpected error fetching price for token ${tokenAddress}:`, error);
         }
