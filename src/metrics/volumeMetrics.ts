@@ -8,7 +8,7 @@ export async function volumeMetrics(
     network: string,
     filteredOrders: any[],
     durationInSeconds: number,
-    token: string
+    token: string,
 ): Promise<any> {
     const endpoint = networkConfig[network].subgraphUrl;
     const { tradesLastForDuration, aggregatedResults, processOrderLogMessage } =
@@ -34,7 +34,7 @@ async function processOrdersWithAggregation(
     endpoint: string,
     filteredOrders: any[],
     durationInSeconds: number,
-    token: string
+    token: string,
 ): Promise<{
     tradesLastForDuration: number;
     aggregatedResults: any[];
@@ -167,7 +167,7 @@ async function processOrdersWithAggregation(
 async function calculateTradeDistribution(
     orderTrades: any[],
     durationInSeconds: number,
-    token: string
+    token: string,
 ): Promise<{
     tradeDistributionForDuration: any[];
     volumeDistributionForDuration: any[];
@@ -192,8 +192,10 @@ async function calculateTradeDistribution(
         tradePercentage: ((order.trades.length / totalTradesForDuration) * 100).toFixed(2),
     }));
 
-    const { volumeDistributionForDuration, tokenVolumesPerOrder } =
-        await getVolumeDistribution(orderTradesForDuration, token);
+    const { volumeDistributionForDuration, tokenVolumesPerOrder } = await getVolumeDistribution(
+        orderTradesForDuration,
+        token,
+    );
 
     return { tradeDistributionForDuration, volumeDistributionForDuration };
 }
@@ -215,7 +217,7 @@ async function getVolumeDistribution(orderTradesDuration: any[], token: string) 
             }
         >
     > = {};
-    const {address: tokenAddress} = tokenConfig[token]
+    const { address: tokenAddress } = tokenConfig[token];
     for (let i = 0; i < orderTradesDuration.length; i++) {
         const { orderHash, trades } = orderTradesDuration[i];
 
@@ -296,25 +298,21 @@ async function getVolumeDistribution(orderTradesDuration: any[], token: string) 
         return (
             total +
             Object.values(tokens)
-            .filter((token: any) => {
-                return token.address.toLowerCase() === tokenAddress.toLowerCase()
-            })
-            .reduce(
-                (sum, token) => sum + parseFloat(token.totalVolumeDurationUsd),
-                0,
-            )
+                .filter((token: any) => {
+                    return token.address.toLowerCase() === tokenAddress.toLowerCase();
+                })
+                .reduce((sum, token) => sum + parseFloat(token.totalVolumeDurationUsd), 0)
         );
     }, 0);
 
     // Calculate volume distribution for each order
     const volumeDistributionForDuration = Object.entries(tokenVolumesPerOrder).map(
         ([orderHash, tokens]) => {
-            const orderTotalVolumeUsd = Object.values(tokens).filter((token: any) => {
-                return token.address.toLowerCase() === tokenAddress.toLowerCase()
-            }).reduce(
-                (sum, token) => sum + parseFloat(token.totalVolumeDurationUsd),
-                0,
-            );
+            const orderTotalVolumeUsd = Object.values(tokens)
+                .filter((token: any) => {
+                    return token.address.toLowerCase() === tokenAddress.toLowerCase();
+                })
+                .reduce((sum, token) => sum + parseFloat(token.totalVolumeDurationUsd), 0);
 
             return {
                 orderHash,
