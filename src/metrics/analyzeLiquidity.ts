@@ -1,7 +1,7 @@
-const { ethers } = require("ethers");
-const { getTokenPriceUsd } = require("../priceUtils");
-const { tokenConfig, networkConfig }= require("../config");
-const axios = require("axios");
+import { ethers } from "ethers";
+import { getTokenPriceUsd } from "../priceUtils";
+import { tokenConfig, networkConfig } from "../config";
+import axios from "axios";
 
 export async function analyzeLiquidity(
     network: string,

@@ -1,4 +1,4 @@
-const axios = require ("axios");
+import axios from "axios";
 import { Variables, Order } from "./types";
 import { fetchOrderQuery } from "./queries";
 import {
