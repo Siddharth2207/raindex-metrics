@@ -70,11 +70,7 @@ export async function getTokenPriceUsd(
 
         return { averagePrice, currentPrice };
     } catch (error) {
-        if (axios.isAxiosError(error)) {
-            console.error(`Error fetching price for token ${tokenAddress}: ${error}`);
-        } else {
-            console.error(`Unexpected error fetching price for token ${tokenAddress}:`, error);
-        }
+        console.error(`Unexpected error fetching price for token ${tokenAddress}:`, error);
         return { averagePrice: 0, currentPrice: 0 };
     }
 }

@@ -109,11 +109,9 @@ export async function generateMarkdownReport(input: string, openAiApiKey: string
 
 // Error handler
 export function handleError(error: any) {
-    if (axios.isAxiosError(error)) {
-        console.error("Axios Error:", error.response?.data || error.message);
-    } else {
-        console.error("Unexpected Error:", error);
-    }
+    
+    console.error("Unexpected Error:", error);
+    
 }
 
 // Generate report for tokens.
