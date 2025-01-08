@@ -45,7 +45,7 @@ Options:
   --help                  Show this help message.
 
 Example:
-  node raindex-report.js --token IOEN --network polygon --duaration daily
+  node raindex-report.js --token IOEN --network polygon --duration daily
   `);
 }
 

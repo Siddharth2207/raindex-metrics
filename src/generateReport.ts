@@ -16,9 +16,6 @@ import {
 import { volumeMetrics } from "./metrics/volumeMetrics";
 import { analyzeLiquidity } from "./metrics/analyzeLiquidity";
 
-
-
-
 // Fetch All Orders for Tokens
 export async function fetchAndFilterOrders(
     token: string,
@@ -124,7 +121,12 @@ export function handleError(error: any) {
 }
 
 // Generate report for tokens.
-export async function generateReportForToken(token: string, network: string, duration: string, openAiApiKey: string) {
+export async function generateReportForToken(
+    token: string,
+    network: string,
+    duration: string,
+    openAiApiKey: string,
+) {
     try {
         // Convert duration to seconds
         const durationToSeconds: Record<string, number> = {
@@ -219,10 +221,9 @@ ${summarizedMessage}
 `;
 
         // Generate formatted markdown
-        const formattedMarkdown = await generateMarkdownReport(markdownInput,openAiApiKey);
+        const formattedMarkdown = await generateMarkdownReport(markdownInput, openAiApiKey);
         console.log(formattedMarkdown);
     } catch (error) {
         handleError(error);
     }
 }
-
