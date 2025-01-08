@@ -1,20 +1,21 @@
 {
-    "include": ["./src/**/*.ts"],
-    "exclude": ["node_modules", "./test", "dist"],
-    "compilerOptions": {
-      "target": "ES2022",
-      "lib": ["ES6", "ES2022"],
-      "module": "CommonJS",
-      "rootDir": "./src",
-      "moduleResolution": "Node",
-      "resolveJsonModule": true,
-      "allowJs": true,
-      "declaration": true,
-      "outDir": "./dist",
-      "esModuleInterop": true,
-      "strict": true,
-      "noUnusedLocals": true,
-      "noUnusedParameters": true,
-      "skipLibCheck": true
-    }
+  "include": ["./src/**/*.ts", "./src/**/*.tsx"], // Include TypeScript and TSX files
+  "exclude": ["node_modules", "./test", "dist"], // Exclude unnecessary directories
+  "compilerOptions": {
+    "target": "ES2022", // Latest ECMAScript version
+    "lib": ["DOM", "ES2022"], // Include DOM types for React and ES2022 features
+    "module": "ESNext", // Use ESNext for modern modules
+    "rootDir": "./src", // Root directory for source files
+    "moduleResolution": "Node", // Node-style module resolution
+    "resolveJsonModule": true, // Allow importing JSON modules
+    "jsx": "react-jsx", // Use the new JSX runtime for React
+    "allowJs": true, // Allow JavaScript files in the project
+    "declaration": true, // Generate declaration files for type definitions
+    "outDir": "./dist", // Output directory for transpiled files
+    "esModuleInterop": true, // Ensure compatibility with CommonJS modules
+    "strict": true, // Enable all strict type-checking options
+    "noUnusedLocals": true, // Report errors on unused local variables
+    "noUnusedParameters": true, // Report errors on unused function parameters
+    "skipLibCheck": true // Skip type checking of declaration files
   }
+}
