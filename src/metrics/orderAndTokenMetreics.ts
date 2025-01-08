@@ -1,5 +1,5 @@
-import { ethers } from "ethers";
-import { getTokenPriceUsd } from "../priceUtils";
+const { ethers } = require("ethers");
+const { getTokenPriceUsd } =  require("../priceUtils");
 
 const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
 const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);

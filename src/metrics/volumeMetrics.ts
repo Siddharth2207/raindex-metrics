@@ -1,4 +1,4 @@
-import axios from "axios";
+const axios = require ("axios");
 import { ethers } from "ethers";
 import { getTokenPriceUsd } from "../priceUtils";
 import { fetchTradesQuery } from "../queries";
