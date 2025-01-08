@@ -31,7 +31,7 @@
                 exit 1
               fi
               echo "Running raindex-metrics with TOKEN_SYMBOL="''${TOKEN_SYMBOL}" NETWORK="''${NETWORK}" and DURATION="''${DURATION}""
-              node dist/index.js --token "''${TOKEN_SYMBOL}" --network "''${NETWORK}" --duration "''${DURATION}"
+              node raindex-report --token "''${TOKEN_SYMBOL}" --network "''${NETWORK}" --duration "''${DURATION}"
 
             '';
           };
