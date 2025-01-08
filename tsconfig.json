@@ -1,17 +1,20 @@
 {
-  "compilerOptions": {
-    "target": "ES2022", // Modern target
-    "module": "commonjs", // Node.js-compatible module system
-    "outDir": "./dist", // Output directory for compiled files
-    "rootDir": "./src", // Root directory for source files
-    "strict": true, // Enable all strict type-checking options
-    "esModuleInterop": true, // Ensures compatibility with CommonJS modules like axios
-    "allowSyntheticDefaultImports": true, // Allows default import syntax for CommonJS
-    "forceConsistentCasingInFileNames": true, // Enforce consistent file name casing
-    "skipLibCheck": true, // Skip type checks for declaration files
-    "resolveJsonModule": true, // Allow importing JSON files as modules
-    "types": ["node"] // Include Node.js types
-  },
-  "include": ["src/**/*.ts"], // Include all TypeScript files in the src directory
-  "exclude": ["node_modules", "dist"] // Exclude unnecessary directories
-}
+    "include": ["./src/**/*.ts"],
+    "exclude": ["node_modules", "./test", "dist"],
+    "compilerOptions": {
+      "target": "ES2022",
+      "lib": ["ES6", "ES2022"],
+      "module": "CommonJS",
+      "rootDir": "./src",
+      "moduleResolution": "Node",
+      "resolveJsonModule": true,
+      "allowJs": true,
+      "declaration": true,
+      "outDir": "./dist",
+      "esModuleInterop": true,
+      "strict": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "skipLibCheck": true
+    }
+  }

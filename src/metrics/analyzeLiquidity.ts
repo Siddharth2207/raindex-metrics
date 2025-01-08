@@ -9,9 +9,7 @@ export async function analyzeLiquidity(
     durationInSeconds: number,
 ): Promise<any> {
     const {
-        symbol: tokenSymbol,
-        decimals: tokenDecimals,
-        address: tokenAddress,
+        symbol: tokenSymbol
     } = tokenConfig[token];
     const liquidityAnalysisLog: string[] = [];
     liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
