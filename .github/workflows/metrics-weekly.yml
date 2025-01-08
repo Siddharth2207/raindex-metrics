@@ -41,6 +41,7 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          ref: metrics-consolidate
 
       - run: |
           sudo rm -rf \
