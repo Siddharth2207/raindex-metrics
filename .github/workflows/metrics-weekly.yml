@@ -30,10 +30,10 @@ jobs:
             token: WLTH
             duration: weekly  
           - network: flare
-            token: sFLR
+            token: SFLR
             duration: weekly
           - network: flare
-            token: cysFLR
+            token: CYSFLR
             duration: weekly  
 
     steps:

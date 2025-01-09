@@ -21,8 +21,8 @@ export const allowedTokens = [
     "QUICK_OLD",
     "QUICK_NEW",
     "WFLR",
-    "sFLR",
-    "cysFLR",
+    "SFLR",
+    "CYSFLR",
     "KIMA",
 ];
 
@@ -134,7 +134,7 @@ export const tokenConfig: Config = {
         poolsV3: [],
         poolsPancakSwapV3: [],
     },
-    cysFLR: {
+    CYSFLR: {
         symbol: "cysFLR",
         decimals: 18,
         network: "flare",
@@ -243,7 +243,7 @@ export const tokenConfig: Config = {
         ],
         poolsPancakSwapV3: [],
     },
-    sFLR: {
+    SFLR: {
         symbol: "sFLR",
         network: "flare",
         decimals: 18,
