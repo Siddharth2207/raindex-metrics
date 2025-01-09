@@ -31,8 +31,8 @@ on:
           - QUICK_OLD
           - QUICK_NEW
           - WFLR
-          - sFLR
-          - cysFLR
+          - SFLR
+          - CYSFLR
           - KIMA
       
       duration:
