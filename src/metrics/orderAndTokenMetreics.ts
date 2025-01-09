@@ -96,7 +96,7 @@ export async function calculateCombinedVaultBalance(orders: any): Promise<number
 /**
  * Generates token metrics from the given filtered active orders.
  */
-export async function tokenMetrics(filteredActiveOrders: any[]): Promise<string[]> {
+export async function tokenMetrics(filteredActiveOrders: any[]): Promise<{ tokenVaultSummary: Array<[string, any]>; logMessages: string[] }> {
     const logMessages: string[] = [];
 
     // Extract all tokens from outputs and inputs
@@ -154,6 +154,7 @@ export async function tokenMetrics(filteredActiveOrders: any[]): Promise<string[
         });
 
         logMessages.push(`Funded Active Orders for ${tokenSymbol}: ${fundedOrders.length}`);
+        uniqueTokensMap.get(tokenAddress)['fundedActiveOrders'] = fundedOrders.length;
 
         const totalInputsVaults = filteredActiveOrders
             .flatMap((order) => order.inputs)
@@ -183,11 +184,19 @@ export async function tokenMetrics(filteredActiveOrders: any[]): Promise<string[
         const totalVaults = uniqueEntries.size;
         const totalValueUsd = parseFloat(totalTokens) * currentPrice;
 
+        uniqueTokensMap.get(tokenAddress)['totalVaults'] = uniqueEntries.size;
+        uniqueTokensMap.get(tokenAddress)['totalTokenBalance'] = totalTokens;
+        uniqueTokensMap.get(tokenAddress)['totalTokenBalanceUsd'] = totalValueUsd;
+
         // Add a row to the table
         logMessages.push(
             `| ${tokenSymbol} | ${totalVaults} | ${totalTokens} | ${currentPrice} | ${totalValueUsd} |`,
         );
     }
 
-    return logMessages;
+    return {
+        tokenVaultSummary: Array.from(uniqueTokensMap.values()),
+        logMessages
+    }
+    ;
 }
