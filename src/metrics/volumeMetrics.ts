@@ -11,10 +11,10 @@ export async function volumeMetrics(
     token: string,
 ): Promise<any> {
     const endpoint = networkConfig[network].subgraphUrl;
-    const { tradesLastForDuration, aggregatedResults, processOrderLogMessage } =
+    const { tradesLastForDuration, aggregatedResults, processOrderLogMessage, tradeDistributionForDuration,volumeDistributionForDuration } =
         await processOrdersWithAggregation(endpoint, filteredOrders, durationInSeconds, token);
 
-    return { tradesLastForDuration, aggregatedResults, processOrderLogMessage };
+    return { tradesLastForDuration, aggregatedResults, processOrderLogMessage,tradeDistributionForDuration,volumeDistributionForDuration };
 }
 
 async function fetchTrades(endpoint: string, orderHash: string): Promise<any[]> {
@@ -39,6 +39,9 @@ async function processOrdersWithAggregation(
     tradesLastForDuration: number;
     aggregatedResults: any[];
     processOrderLogMessage: string[];
+    tradeDistributionForDuration: any[];
+    volumeDistributionForDuration: any[];
+
 }> {
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const aggregatedVolumes: Record<
@@ -161,7 +164,7 @@ async function processOrdersWithAggregation(
         );
     });
 
-    return { tradesLastForDuration, aggregatedResults, processOrderLogMessage };
+    return { tradesLastForDuration, aggregatedResults, processOrderLogMessage, tradeDistributionForDuration, volumeDistributionForDuration };
 }
 
 async function calculateTradeDistribution(
