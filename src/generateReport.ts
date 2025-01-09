@@ -139,7 +139,7 @@ export async function generateReportForToken(
 
         // Fetch order metrics
         const orderMetricsLogs = await orderMetrics(filteredActiveOrders, filteredInActiveOrders);
-        const tokenMetricsLogs = await tokenMetrics(filteredActiveOrders);
+        const {logMessages: tokenMetricsLogs} = await tokenMetrics(filteredActiveOrders);
         const combinedBalance = await calculateCombinedVaultBalance(allOrders);
 
         // Analyze liquidity
