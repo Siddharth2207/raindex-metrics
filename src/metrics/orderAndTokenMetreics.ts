@@ -9,7 +9,7 @@ export async function orderMetrics(
     filteredInActiveOrders: any[],
     fromTimestamp: number,
     toTimestamp: number
-): Promise<string[]> {
+): Promise<{ orderMetricsData: any; logMessages: string[] }> {
     // Calculate total counts for active and inactive orders
     const totalActiveOrders = filteredActiveOrders.length;
     const totalInActiveOrders = filteredInActiveOrders.length;
@@ -52,7 +52,16 @@ export async function orderMetrics(
         `Unique owners in the last ${logString}: ${uniqueOwnersForDuration}`,
     ];
 
-    return logMessages;
+    const orderMetricsData = {
+        totalActiveOrders: totalActiveOrders,
+        totalInActiveOrders: totalInActiveOrders,
+        ordersAddedForDuration,
+        uniqueOwners,
+        uniqueOwnersForDuration,
+        lastOrderDate
+    }
+
+    return {orderMetricsData,logMessages};
 }
 
 /**
