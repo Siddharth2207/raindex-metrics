@@ -140,7 +140,7 @@ export async function generateReportForToken(
         const allOrders = filteredActiveOrders.concat(filteredInActiveOrders);
 
         // Fetch order metrics
-        const orderMetricsLogs = await orderMetrics(filteredActiveOrders, filteredInActiveOrders, fromTimestamp, toTimestamp);
+        const {logMessages: orderMetricsLogs} = await orderMetrics(filteredActiveOrders, filteredInActiveOrders, fromTimestamp, toTimestamp);
         const {logMessages: tokenMetricsLogs} = await tokenMetrics(filteredActiveOrders);
         const combinedBalance = await calculateCombinedVaultBalance(allOrders);
 
