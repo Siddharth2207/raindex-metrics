@@ -1,16 +1,14 @@
 import { ethers } from "ethers";
 import { getTokenPriceUsd } from "../priceUtils";
 
-
-const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
-const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
 /**
  * Analyzes order metrics, including total orders, unique owners, and recent activity.
  */
 export async function orderMetrics(
     filteredActiveOrders: any[],
     filteredInActiveOrders: any[],
+    fromTimestamp: number,
+    toTimestamp: number
 ): Promise<string[]> {
     // Calculate total counts for active and inactive orders
     const totalActiveOrders = filteredActiveOrders.length;
@@ -29,16 +27,20 @@ export async function orderMetrics(
           ).toISOString()
         : null;
 
-    // Filter orders added within specific time periods
-    const ordersLast24Hours = allOrders.filter(
-        (order) => new Date(Number(order.timestampAdded) * 1000) >= last24Hours,
+    const ordersAddedForDuration = allOrders.filter(
+        (order) => order.timestampAdded >= fromTimestamp && order.timestampAdded <= toTimestamp,
     );
-    const ordersLastWeek = allOrders.filter(
-        (order) => new Date(Number(order.timestampAdded) * 1000) >= lastWeek,
-    );
-    // Calculate unique owners for orders in the last 24 hours and last week
-    const uniqueOwnersLast24Hours = new Set(ordersLast24Hours.map((order) => order.owner)).size;
-    const uniqueOwnersLastWeek = new Set(ordersLastWeek.map((order) => order.owner)).size;
+
+    const uniqueOwnersForDuration = new Set(ordersAddedForDuration.map((order) => order.owner)).size;
+
+    let logString = "";
+    if (toTimestamp - fromTimestamp === 86400) {
+        logString = "24 hours";
+    } else if (toTimestamp - fromTimestamp === 86400 * 7) {
+        logString = "week";
+    } else if (toTimestamp - fromTimestamp === 86400 * 30) {
+        logString = "month";
+    }
 
     // Aggregate all metrics into readable log messages
     const logMessages: string[] = [
@@ -46,10 +48,8 @@ export async function orderMetrics(
         `Total Inactive Orders: ${totalInActiveOrders}`,
         `Unique Owners: ${uniqueOwners}`,
         `Last Order Date: ${lastOrderDate || "N/A"}`,
-        `Orders added in the last 24 hours: ${ordersLast24Hours.length}`,
-        `Orders added in the last week: ${ordersLastWeek.length}`,
-        `Unique owners in the last 24 hours: ${uniqueOwnersLast24Hours}`,
-        `Unique owners in the last week: ${uniqueOwnersLastWeek}`,
+        `Orders added in the last ${logString}: ${ordersAddedForDuration.length}`,
+        `Unique owners in the last ${logString}: ${uniqueOwnersForDuration}`,
     ];
 
     return logMessages;
