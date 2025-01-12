@@ -129,6 +129,8 @@ export async function generateReportForToken(
             monthly: 30 * 24 * 60 * 60,
         };
         const durationInSeconds = durationToSeconds[duration] ?? 0;
+        const toTimestamp = Math.floor(new Date().getTime() / 1000);
+        const fromTimestamp = toTimestamp - durationInSeconds;
 
         // Fetch and process orders
         const { filteredActiveOrders, filteredInActiveOrders } = await fetchAndFilterOrders(
@@ -138,7 +140,7 @@ export async function generateReportForToken(
         const allOrders = filteredActiveOrders.concat(filteredInActiveOrders);
 
         // Fetch order metrics
-        const orderMetricsLogs = await orderMetrics(filteredActiveOrders, filteredInActiveOrders);
+        const orderMetricsLogs = await orderMetrics(filteredActiveOrders, filteredInActiveOrders, fromTimestamp, toTimestamp);
         const {logMessages: tokenMetricsLogs} = await tokenMetrics(filteredActiveOrders);
         const combinedBalance = await calculateCombinedVaultBalance(allOrders);
 
@@ -147,14 +149,14 @@ export async function generateReportForToken(
             liquidityAnalysisLog,
             totalTokenExternalVolForDurationUsd,
             totalTokenExternalTradesForDuration,
-        } = await analyzeLiquidity(network, token, durationInSeconds);
+        } = await analyzeLiquidity(network, token, fromTimestamp, toTimestamp);
 
         // Calculate volume metrics
         const {
             tradesLastForDuration: totalRaindexTradesForDuration,
             aggregatedResults,
             processOrderLogMessage,
-        } = await volumeMetrics(network, allOrders, durationInSeconds, token);
+        } = await volumeMetrics(network, allOrders, fromTimestamp, toTimestamp, token);
 
         // Calculate Raindex volume
         const tokenAddress = tokenConfig[token]?.address.toLowerCase();

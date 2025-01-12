@@ -6,7 +6,8 @@ import axios from "axios";
 export async function analyzeLiquidity(
     network: string,
     token: string,
-    durationInSeconds: number,
+    fromTimestamp: number,
+    toTimestamp: number,
 ): Promise<any> {
     const {
         symbol: tokenSymbol
@@ -15,7 +16,7 @@ export async function analyzeLiquidity(
     liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
 
     const { totalPoolVolumeUsdForDuration, totalPoolTradesForDuration } =
-        await analyzeHyperSyncData(tokenConfig[token], networkConfig[network], durationInSeconds);
+        await analyzeHyperSyncData(tokenConfig[token], networkConfig[network], fromTimestamp, toTimestamp);
 
     liquidityAnalysisLog.push(` - Pool Volume for duration: ${totalPoolVolumeUsdForDuration} USD`);
     liquidityAnalysisLog.push(` - Pool Trades for duration: ${totalPoolTradesForDuration}`);
@@ -27,9 +28,9 @@ export async function analyzeLiquidity(
     };
 }
 
-async function getBlockNumberForTimePeriod(
+async function getBlockNumberForTimestamp(
     network: { rpc: string; blockTime: number },
-    seconds: number,
+    targetTimestamp: number,
 ) {
     try {
         // Validate the network object
@@ -37,8 +38,8 @@ async function getBlockNumberForTimePeriod(
             throw new Error('Invalid network object. Ensure "rpc" and "blockTime" are provided.');
         }
 
-        if (seconds <= 0) {
-            throw new Error("Invalid time period. Seconds must be greater than 0.");
+        if (targetTimestamp <= 0) {
+            throw new Error("Invalid timestamp. Target timestamp must be greater than 0.");
         }
 
         // Initialize ethers provider
@@ -47,10 +48,6 @@ async function getBlockNumberForTimePeriod(
         // Fetch the latest block
         const latestBlock = await provider.getBlock("latest");
         const latestBlockNumber = latestBlock.number;
-        const latestTimestamp = latestBlock.timestamp;
-
-        // Calculate the target timestamp
-        const targetTimestamp = latestTimestamp - seconds;
 
         // Perform binary search to find the exact block
         let low = 0;
@@ -78,20 +75,24 @@ async function getBlockNumberForTimePeriod(
             }
         }
 
-        return { blockForPeriod: closestBlock, latestBlock: latestBlock.number };
+        return closestBlock;
     } catch (error) {
         console.error("Error calculating block number:", error);
         throw error;
     }
 }
 
-async function analyzeHyperSyncData(token: any, network: any, durationInSeconds: number) {
+async function analyzeHyperSyncData(token: any, network: any, fromTimestamp: number, toTimestamp: number) {
     // Create hypersync client using the mainnet hypersync endpoint
     const hyperSyncClinet = `https://${network.chainId}.hypersync.xyz/query`;
 
-    const { blockForPeriod, latestBlock } = await getBlockNumberForTimePeriod(
+    const fromBlockNumber = await getBlockNumberForTimestamp(
         network,
-        durationInSeconds,
+        fromTimestamp,
+    );
+    const toBlockNumber = await getBlockNumberForTimestamp(
+        network,
+        toTimestamp,
     );
 
     const provider = new ethers.providers.JsonRpcProvider(network.rpc);
@@ -123,8 +124,8 @@ async function analyzeHyperSyncData(token: any, network: any, durationInSeconds:
             hyperSyncClinet,
             poolContractAddress,
             "0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822",
-            blockForPeriod,
-            latestBlock,
+            fromBlockNumber,
+            toBlockNumber,
         );
 
         let totalAmount0 = ethers.BigNumber.from(0);
@@ -195,8 +196,8 @@ async function analyzeHyperSyncData(token: any, network: any, durationInSeconds:
             hyperSyncClinet,
             poolContractAddress,
             "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
-            blockForPeriod,
-            latestBlock,
+            fromBlockNumber,
+            toBlockNumber,
         );
 
         totalPoolTradesForDuration += swapQueryResult.length;
@@ -260,8 +261,8 @@ async function analyzeHyperSyncData(token: any, network: any, durationInSeconds:
             hyperSyncClinet,
             poolContractAddress,
             "0x19b47279256b2a23a1665c810c8d55a1758940ee09377d4f8d26497a3577dc83",
-            blockForPeriod,
-            latestBlock,
+            fromBlockNumber,
+            toBlockNumber,
         );
 
         totalPoolTradesForDuration += swapQueryResult.length;

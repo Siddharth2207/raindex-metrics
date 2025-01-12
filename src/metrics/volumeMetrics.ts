@@ -7,12 +7,13 @@ import { tokenConfig, networkConfig } from "../config";
 export async function volumeMetrics(
     network: string,
     filteredOrders: any[],
-    durationInSeconds: number,
+    fromTimestamp: number,
+    toTimestamp: number,
     token: string,
 ): Promise<any> {
     const endpoint = networkConfig[network].subgraphUrl;
     const { tradesLastForDuration, aggregatedResults, processOrderLogMessage, tradeDistributionForDuration,volumeDistributionForDuration } =
-        await processOrdersWithAggregation(endpoint, filteredOrders, durationInSeconds, token);
+        await processOrdersWithAggregation(endpoint, filteredOrders, fromTimestamp, toTimestamp, token);
 
     return { tradesLastForDuration, aggregatedResults, processOrderLogMessage,tradeDistributionForDuration,volumeDistributionForDuration };
 }
@@ -33,7 +34,8 @@ async function fetchTrades(endpoint: string, orderHash: string): Promise<any[]> 
 async function processOrdersWithAggregation(
     endpoint: string,
     filteredOrders: any[],
-    durationInSeconds: number,
+    fromTimestamp: number,
+    toTimestamp: number,
     token: string,
 ): Promise<{
     tradesLastForDuration: number;
@@ -43,7 +45,6 @@ async function processOrdersWithAggregation(
     volumeDistributionForDuration: any[];
 
 }> {
-    const currentTimestamp = Math.floor(Date.now() / 1000);
     const aggregatedVolumes: Record<
         string,
         {
@@ -70,7 +71,7 @@ async function processOrdersWithAggregation(
             });
 
             // Calculate volumes for the trades
-            const volumes = calculateVolumes(trades, currentTimestamp, durationInSeconds);
+            const volumes = calculateVolumes(trades, fromTimestamp, toTimestamp);
 
             // Aggregate token volumes
             volumes.forEach((volume) => {
@@ -104,20 +105,21 @@ async function processOrdersWithAggregation(
     const tradesLastForDuration = orderTrades
         .flatMap((order) => order.trades)
         .filter(
-            (trade) =>
-                new Date(Number(trade.timestamp) * 1000) >=
-                new Date(Date.now() - durationInSeconds * 1000),
+            (trade) =>{
+                const tradeTimestamp = trade.timestamp
+                return tradeTimestamp >= fromTimestamp && tradeTimestamp <= toTimestamp
+            }
         ).length;
 
     const { tradeDistributionForDuration, volumeDistributionForDuration } =
-        await calculateTradeDistribution(orderTrades, durationInSeconds, token);
+        await calculateTradeDistribution(orderTrades, fromTimestamp, toTimestamp, token);
 
     let logString = "For Duration";
-    if (durationInSeconds === 86400) {
+    if (toTimestamp - fromTimestamp === 86400) {
         logString = "24 hours";
-    } else if (durationInSeconds === 86400 * 7) {
+    } else if (toTimestamp - fromTimestamp === 86400 * 7) {
         logString = "week";
-    } else if (durationInSeconds === 86400 * 30) {
+    } else if (toTimestamp - fromTimestamp === 86400 * 30) {
         logString = "month";
     }
 
@@ -169,7 +171,8 @@ async function processOrdersWithAggregation(
 
 async function calculateTradeDistribution(
     orderTrades: any[],
-    durationInSeconds: number,
+    fromTimestamp: number,
+    toTimestamp: number,
     token: string,
 ): Promise<{
     tradeDistributionForDuration: any[];
@@ -179,8 +182,7 @@ async function calculateTradeDistribution(
         orderHash: order.orderHash,
         trades: order.trades.filter(
             (trade: any) =>
-                new Date(Number(trade.timestamp) * 1000) >=
-                new Date(Date.now() - durationInSeconds * 1000),
+                trade.timestamp >= fromTimestamp && trade.timestamp <= toTimestamp
         ),
     }));
 
@@ -328,7 +330,7 @@ async function getVolumeDistribution(orderTradesDuration: any[], token: string) 
     return { volumeDistributionForDuration, tokenVolumesPerOrder };
 }
 
-function calculateVolumes(trades: any[], currentTimestamp: number, durationInSeconds: number) {
+function calculateVolumes(trades: any[], fromTimestamp: number, toTimestamp: number) {
     const tokenVolumes: Record<
         string,
         {
@@ -348,8 +350,6 @@ function calculateVolumes(trades: any[], currentTimestamp: number, durationInSec
         const outputAmount = ethers.BigNumber.from(trade.outputVaultBalanceChange.amount).abs();
         const tradeTimestamp = parseInt(trade.tradeEvent.transaction.timestamp);
 
-        const timeDiff = currentTimestamp - tradeTimestamp;
-
         // Initialize token entry if not present
         const initializeToken = (token: any) => {
             if (!tokenVolumes[token.address]) {
@@ -366,7 +366,7 @@ function calculateVolumes(trades: any[], currentTimestamp: number, durationInSec
         initializeToken(inputToken);
         initializeToken(outputToken);
 
-        if (timeDiff <= durationInSeconds) {
+        if (tradeTimestamp >= fromTimestamp && tradeTimestamp <= toTimestamp) {
             tokenVolumes[inputToken.address].inVolumeForDuration =
                 tokenVolumes[inputToken.address].inVolumeForDuration.add(inputAmount);
             tokenVolumes[outputToken.address].outVolumeForDuration =
