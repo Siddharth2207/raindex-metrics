@@ -23,8 +23,8 @@ export async function orderMetrics(
     // Determine the most recent order date (timestamp) in ISO format
     const lastOrderDate = allOrders.length
         ? new Date(
-              Math.max(...allOrders.map((order) => Number(order.timestampAdded))),
-          ).toISOString()
+              Math.max(...allOrders.map((order) => Number(order.timestampAdded))) * 1000,
+          ).toLocaleString()
         : null;
 
     const ordersAddedForDuration = allOrders.filter(
