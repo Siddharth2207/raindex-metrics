@@ -1,6 +1,8 @@
 import { ethers } from "ethers";
 import { getTokenPriceUsd } from "../priceUtils";
 import { tokenConfig, networkConfig } from "../config";
+import { Block } from "../types";
+
 import axios from "axios";
 
 export async function analyzeLiquidity(
@@ -28,59 +30,170 @@ export async function analyzeLiquidity(
     };
 }
 
-async function getBlockNumberForTimestamp(
-    network: { rpc: string; blockTime: number },
-    targetTimestamp: number,
+async function getBlockNumberForTimestampByBlockTime  (
+    network: {chainId: number, rpc: string, blockTime: number},
+    targetTimestamp: number
+  ): Promise<number> {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const diff = currentTimestamp - targetTimestamp;
+  
+    const provider = new ethers.providers.JsonRpcProvider(network.rpc);
+  
+    // Fetch the latest block
+    const latestBlock = await provider.getBlock("latest");
+    const latestBlockNumber = latestBlock.number;
+  
+    const approxNearBlock =
+      latestBlockNumber - Math.floor(diff / network.blockTime);
+  
+    // Query Hypersync for blocks
+    const queryResponse = await axios.post(
+      `https://${network.chainId}.hypersync.xyz/query`,
+      {
+        from_block: approxNearBlock,
+        include_all_blocks: true,
+        field_selection: {
+          block: ["number", "timestamp"],
+        },
+      }
+    );
+  
+    // Parse and normalize block data
+    const allBlocks: Block[] = queryResponse.data.data.flatMap((item: any) =>
+      item.blocks.map((block: any) => ({
+        number: block.number,
+        timestamp: parseInt(block.timestamp, 16),
+      }))
+    );
+  
+    // Binary search to find the nearest block
+    const findNearestBlock = (blocks: Block[], targetTimestamp: number): Block => {
+      let left = 0;
+      let right = blocks.length - 1;
+      let nearestBlock: Block | null = null;
+  
+      while (left <= right) {
+        const mid = Math.floor((left + right) / 2);
+        const midTimestamp = blocks[mid].timestamp;
+  
+        if (
+          nearestBlock === null ||
+          Math.abs(midTimestamp - targetTimestamp) <
+            Math.abs(nearestBlock.timestamp - targetTimestamp)
+        ) {
+          nearestBlock = blocks[mid];
+        }
+  
+        if (midTimestamp < targetTimestamp) {
+          left = mid + 1;
+        } else if (midTimestamp > targetTimestamp) {
+          right = mid - 1;
+        } else {
+          return blocks[mid]; // Exact match
+        }
+      }
+  
+      if (!nearestBlock) {
+        throw new Error("No nearest block found.");
+      }
+  
+      return nearestBlock;
+    };
+  
+    const nearestBlock = findNearestBlock(allBlocks, targetTimestamp);
+  
+    return nearestBlock.number;
+  };
+
+async function getBlockNumberForTimestampByHyperSync(
+    network: {chainId: number, rpc: string},
+    targetTimestamp: number
 ) {
+    const HYPERSYNC_URL = `https://${network.chainId}.hypersync.xyz/query`;
+  
     try {
-        // Validate the network object
-        if (!network.rpc || !network.blockTime) {
-            throw new Error('Invalid network object. Ensure "rpc" and "blockTime" are provided.');
+      // Get the latest block number
+      const provider = new ethers.providers.JsonRpcProvider(network.rpc);
+      const latestBlock = await provider.getBlock("latest");
+      const latestBlockNumber = latestBlock.number;
+  
+      let left = 0;
+      let right = latestBlockNumber;
+  
+      let closestBlock = null;
+      let smallestDiff = Infinity;
+  
+      // Binary search loop
+      while (left <= right) {
+        const mid = Math.floor((left + right) / 2);
+  
+        // Create Hypersync query for the mid block
+        const query = {
+          from_block: mid,
+          to_block: mid + 1, // Exclusive upper bound
+          logs: [{}], // Empty log selection for block data
+          field_selection: {
+            block: ["number", "timestamp"],
+          },
+        };
+  
+        try {
+          // Fetch block data from Hypersync
+          const response = await axios.post(HYPERSYNC_URL, query);
+          const blocks = response.data.data.flatMap((item: any) => item.blocks);
+  
+          if (blocks.length === 0) {
+            console.warn(`No blocks found for mid=${mid}. Adjusting search range.`);
+            right = mid - 1;
+            continue;
+          }
+  
+          const block = blocks[0];
+          const blockTimestamp = parseInt(block.timestamp, 16); // Convert hex to integer
+  
+          // Calculate the difference from the target timestamp
+          const diff = Math.abs(blockTimestamp - targetTimestamp);
+  
+          // Update closest block if this is a better match
+          if (diff < smallestDiff) {
+            smallestDiff = diff;
+            closestBlock = block.number;
+          }
+  
+          // Adjust binary search range
+          if (blockTimestamp < targetTimestamp) {
+            left = mid + 1;
+          } else {
+            right = mid - 1;
+          }
+        } catch (error) {
+          console.error(`Error fetching block data for block ${mid}:`, error);
+          // Skip this block range and move backward
+          right = mid - 1;
         }
-
-        if (targetTimestamp <= 0) {
-            throw new Error("Invalid timestamp. Target timestamp must be greater than 0.");
-        }
-
-        // Initialize ethers provider
-        const provider = new ethers.providers.JsonRpcProvider(network.rpc);
-
-        // Fetch the latest block
-        const latestBlock = await provider.getBlock("latest");
-        const latestBlockNumber = latestBlock.number;
-
-        // Perform binary search to find the exact block
-        let low = 0;
-        let high = latestBlockNumber;
-        let closestBlock = latestBlockNumber;
-
-        while (low <= high) {
-            const mid = Math.floor((low + high) / 2);
-            const midBlock = await provider.getBlock(mid);
-
-            if (!midBlock) {
-                throw new Error(`Failed to fetch block details for block number ${mid}.`);
-            }
-
-            const blockTimestamp = midBlock.timestamp;
-
-            if (blockTimestamp === targetTimestamp) {
-                closestBlock = mid;
-                break;
-            } else if (blockTimestamp < targetTimestamp) {
-                low = mid + 1;
-            } else {
-                high = mid - 1;
-                closestBlock = mid; // Update to the closest block above the target
-            }
-        }
-
+      }
+  
+      if (closestBlock !== null) {
         return closestBlock;
+      } else {
+        throw new Error("No block found close to the target timestamp.");
+      }
     } catch (error) {
-        console.error("Error calculating block number:", error);
-        throw error;
+      console.error("Error in getBlockAtTimestamp:", error);
+      throw error;
     }
 }
+
+async function getBlockNumberForTimestamp (
+    network: {chainId: number, rpc: string, blockTime: number},
+    targetTimestamp: number
+) {
+    if(network.chainId === 42161 ){
+        return getBlockNumberForTimestampByBlockTime(network, targetTimestamp)
+    }else{
+        return getBlockNumberForTimestampByHyperSync(network, targetTimestamp)
+    }
+};
 
 async function analyzeHyperSyncData(token: any, network: any, fromTimestamp: number, toTimestamp: number) {
     // Create hypersync client using the mainnet hypersync endpoint

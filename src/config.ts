@@ -337,7 +337,7 @@ export const networkConfig: NetworkConfigurations = {
     arbitrum: {
         chainId: 42161,
         rpc: "https://rpc.ankr.com/arbitrum",
-        blockTime: 1.2,
+        blockTime: 0.25,
         subgraphUrl:
             "https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-arbitrum-one/2024-12-13-7435/gn",
         stables: [
@@ -380,7 +380,7 @@ export const networkConfig: NetworkConfigurations = {
     base: {
         chainId: 8453,
         rpc: "https://mainnet.base.org",
-        blockTime: 12,
+        blockTime: 2,
         subgraphUrl:
             "https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-base/2024-12-13-9c39/gn",
         stables: [

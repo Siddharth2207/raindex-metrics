@@ -129,7 +129,8 @@ export async function generateReportForToken(
             monthly: 30 * 24 * 60 * 60,
         };
         const durationInSeconds = durationToSeconds[duration] ?? 0;
-        const toTimestamp = Math.floor(new Date().getTime() / 1000);
+        const gracePeriodInSeconds = 300
+        const toTimestamp = Math.floor(new Date().getTime() / 1000) - gracePeriodInSeconds;
         const fromTimestamp = toTimestamp - durationInSeconds;
 
         // Fetch and process orders

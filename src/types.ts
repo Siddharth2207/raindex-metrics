@@ -55,6 +55,10 @@ export interface StablesConfig {
     address: string;
 }
 
+export interface Block {
+    number: number;
+    timestamp: number;
+}
 export interface NetworkConfig {
     chainId: number;
     blockTime: number;
