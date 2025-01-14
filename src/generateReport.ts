@@ -1,10 +1,7 @@
 import axios from "axios";
 import { Variables, Order } from "./types";
 import { fetchOrderQuery } from "./queries";
-import {
-    tokenConfig,
-    networkConfig,
-} from "./config";
+import { tokenConfig, networkConfig } from "./config";
 import {
     orderMetrics,
     tokenMetrics,
@@ -33,10 +30,7 @@ export async function fetchAndFilterOrders(
         const activeOrders = orders.filter((order) => order.active);
         const inActiveOrders = orders.filter((order) => !order.active);
 
-        const {
-            symbol: tokenSymbol,
-            address: tokenAddress,
-        } = tokenConfig[token];
+        const { symbol: tokenSymbol, address: tokenAddress } = tokenConfig[token];
 
         console.log(`Fetching orders for token: ${tokenSymbol} on network: ${network}`);
 
@@ -109,9 +103,7 @@ export async function generateMarkdownReport(input: string, openAiApiKey: string
 
 // Error handler
 export function handleError(error: any) {
-    
     console.error("Unexpected Error:", error);
-    
 }
 
 // Generate report for tokens.
@@ -129,7 +121,7 @@ export async function generateReportForToken(
             monthly: 30 * 24 * 60 * 60,
         };
         const durationInSeconds = durationToSeconds[duration] ?? 0;
-        const gracePeriodInSeconds = 300
+        const gracePeriodInSeconds = 300;
         const toTimestamp = Math.floor(new Date().getTime() / 1000) - gracePeriodInSeconds;
         const fromTimestamp = toTimestamp - durationInSeconds;
 
@@ -141,8 +133,13 @@ export async function generateReportForToken(
         const allOrders = filteredActiveOrders.concat(filteredInActiveOrders);
 
         // Fetch order metrics
-        const {logMessages: orderMetricsLogs} = await orderMetrics(filteredActiveOrders, filteredInActiveOrders, fromTimestamp, toTimestamp);
-        const {logMessages: tokenMetricsLogs} = await tokenMetrics(filteredActiveOrders);
+        const { logMessages: orderMetricsLogs } = await orderMetrics(
+            filteredActiveOrders,
+            filteredInActiveOrders,
+            fromTimestamp,
+            toTimestamp,
+        );
+        const { logMessages: tokenMetricsLogs } = await tokenMetrics(filteredActiveOrders);
         const combinedBalance = await calculateCombinedVaultBalance(allOrders);
 
         // Analyze liquidity

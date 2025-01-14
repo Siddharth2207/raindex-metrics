@@ -12,10 +12,27 @@ export async function volumeMetrics(
     token: string,
 ): Promise<any> {
     const endpoint = networkConfig[network].subgraphUrl;
-    const { tradesLastForDuration, aggregatedResults, processOrderLogMessage, tradeDistributionForDuration,volumeDistributionForDuration } =
-        await processOrdersWithAggregation(endpoint, filteredOrders, fromTimestamp, toTimestamp, token);
+    const {
+        tradesLastForDuration,
+        aggregatedResults,
+        processOrderLogMessage,
+        tradeDistributionForDuration,
+        volumeDistributionForDuration,
+    } = await processOrdersWithAggregation(
+        endpoint,
+        filteredOrders,
+        fromTimestamp,
+        toTimestamp,
+        token,
+    );
 
-    return { tradesLastForDuration, aggregatedResults, processOrderLogMessage,tradeDistributionForDuration,volumeDistributionForDuration };
+    return {
+        tradesLastForDuration,
+        aggregatedResults,
+        processOrderLogMessage,
+        tradeDistributionForDuration,
+        volumeDistributionForDuration,
+    };
 }
 
 async function fetchTrades(endpoint: string, orderHash: string): Promise<any[]> {
@@ -43,7 +60,6 @@ async function processOrdersWithAggregation(
     processOrderLogMessage: string[];
     tradeDistributionForDuration: any[];
     volumeDistributionForDuration: any[];
-
 }> {
     const aggregatedVolumes: Record<
         string,
@@ -104,12 +120,10 @@ async function processOrdersWithAggregation(
 
     const tradesLastForDuration = orderTrades
         .flatMap((order) => order.trades)
-        .filter(
-            (trade) =>{
-                const tradeTimestamp = trade.timestamp
-                return tradeTimestamp >= fromTimestamp && tradeTimestamp <= toTimestamp
-            }
-        ).length;
+        .filter((trade) => {
+            const tradeTimestamp = trade.timestamp;
+            return tradeTimestamp >= fromTimestamp && tradeTimestamp <= toTimestamp;
+        }).length;
 
     const { tradeDistributionForDuration, volumeDistributionForDuration } =
         await calculateTradeDistribution(orderTrades, fromTimestamp, toTimestamp, token);
@@ -166,7 +180,13 @@ async function processOrdersWithAggregation(
         );
     });
 
-    return { tradesLastForDuration, aggregatedResults, processOrderLogMessage, tradeDistributionForDuration, volumeDistributionForDuration };
+    return {
+        tradesLastForDuration,
+        aggregatedResults,
+        processOrderLogMessage,
+        tradeDistributionForDuration,
+        volumeDistributionForDuration,
+    };
 }
 
 async function calculateTradeDistribution(
@@ -181,8 +201,7 @@ async function calculateTradeDistribution(
     const orderTradesForDuration = orderTrades.map((order) => ({
         orderHash: order.orderHash,
         trades: order.trades.filter(
-            (trade: any) =>
-                trade.timestamp >= fromTimestamp && trade.timestamp <= toTimestamp
+            (trade: any) => trade.timestamp >= fromTimestamp && trade.timestamp <= toTimestamp,
         ),
     }));
 
@@ -397,10 +416,7 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
             const tokenAddress = item.address;
 
             // Fetch the current price of the token
-            const { currentPrice } = await getTokenPriceUsd(
-                tokenAddress,
-                item.symbol,
-            );
+            const { currentPrice } = await getTokenPriceUsd(tokenAddress, item.symbol);
 
             if (currentPrice > 0) {
                 item.totalVolumeForDurationUsd = (
