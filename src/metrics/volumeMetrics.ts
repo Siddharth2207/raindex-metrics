@@ -71,50 +71,57 @@ async function processOrdersWithAggregation(
         }
     > = {};
 
-    const orderTrades = [];
+    const orderTrades: { orderHash: string; trades: any[] }[] = [];
     const processOrderLogMessage: string[] = [];
 
-    for (const order of filteredOrders) {
-        const orderHash = order.orderHash;
-
-        try {
-            // Fetch trades for the order
-            const trades = await fetchTrades(endpoint, orderHash);
-
-            orderTrades.push({
+    try {
+        await Promise.all(
+          filteredOrders.map(async (order) => {
+            const orderHash = order.orderHash;
+    
+            try {
+              // Fetch trades for the order
+              const trades = await fetchTrades(endpoint, orderHash);
+    
+              // Add trades to orderTrades
+              orderTrades.push({
                 orderHash: orderHash,
                 trades: trades,
-            });
-
-            // Calculate volumes for the trades
-            const volumes = calculateVolumes(trades, fromTimestamp, toTimestamp);
-
-            // Aggregate token volumes
-            volumes.forEach((volume) => {
+              });
+    
+              // Calculate volumes for the trades
+              const volumes = calculateVolumes(trades, fromTimestamp, toTimestamp);
+    
+              // Aggregate token volumes
+              volumes.forEach((volume) => {
                 const token = volume.token;
                 const decimals = volume.decimals;
                 const address = volume.address;
-
+    
                 if (!aggregatedVolumes[address]) {
-                    aggregatedVolumes[address] = {
-                        totalVolumeForDuration: ethers.BigNumber.from(0),
-                        decimals: decimals,
-                        address,
-                        symbol: token,
-                    };
+                  aggregatedVolumes[address] = {
+                    totalVolumeForDuration: ethers.BigNumber.from(0),
+                    decimals: decimals,
+                    address,
+                    symbol: token,
+                  };
                 }
-
+    
                 aggregatedVolumes[address].totalVolumeForDuration = aggregatedVolumes[
-                    address
+                  address
                 ].totalVolumeForDuration.add(
-                    ethers.utils.parseUnits(volume.totalVolumeForDuration, decimals),
+                  ethers.utils.parseUnits(volume.totalVolumeForDuration, decimals),
                 );
-            });
-        } catch (error) {
-            console.error(`Error processing order ${orderHash}:`, error);
-            processOrderLogMessage.push(`Error processing order ${orderHash}: ${error}`);
-        }
-    }
+              });
+            } catch (error) {
+              console.error(`Error processing order ${orderHash}:`, error);
+              processOrderLogMessage.push(`Error processing order ${orderHash}: ${error}`);
+            }
+          }),
+        );
+      } catch (error) {
+        console.error("Error processing orders:", error);
+      }
 
     const totalTrades = orderTrades.reduce((sum, order) => sum + order.trades.length, 0);
 
