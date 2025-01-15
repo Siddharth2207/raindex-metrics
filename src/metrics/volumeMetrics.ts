@@ -14,6 +14,7 @@ export async function volumeMetrics(
     const endpoint = networkConfig[network].subgraphUrl;
     const {
         tradesLastForDuration,
+        tradesAllTime,
         aggregatedResults,
         processOrderLogMessage,
         tradeDistributionForDuration,
@@ -28,24 +29,54 @@ export async function volumeMetrics(
 
     return {
         tradesLastForDuration,
+        tradesAllTime,
         aggregatedResults,
         processOrderLogMessage,
         tradeDistributionForDuration,
         volumeDistributionForDuration,
     };
 }
+export async function fetchAllPaginatedData(
+    endpoint: string,
+    query: string,
+    variables: Record<string, any>,
+    itemsKey: string, // The key in the response where the array of items is located
+    first = 1000 // The batch size for pagination
+): Promise<any[]> {
+    const allItems: any[] = [];
+    let skip = 0;
 
-async function fetchTrades(endpoint: string, orderHash: string): Promise<any[]> {
-    try {
-        const response = await axios.post(endpoint, {
-            query: fetchTradesQuery,
-            variables: { orderHash },
-        });
-        return response.data.data.trades || [];
-    } catch (error) {
-        console.error(`Error fetching trades for order ${orderHash}:`, error);
-        throw error;
+    while (true) {
+        try {
+            // Prepare variables with updated pagination parameters
+            const paginatedVariables = { ...variables, skip, first };
+
+            // Fetch a batch of items
+            const response = await axios.post(endpoint, {
+                query,
+                variables: paginatedVariables,
+            });
+
+            // Extract the items from the response
+            const items = response.data.data[itemsKey] || [];
+
+            allItems.push(...items); // Append items to the result array
+
+            // Check if fewer items are returned than the `first` limit
+            if (items.length < first) {
+                // All items fetched; exit the loop
+                break;
+            }
+
+            // Increment skip for the next batch
+            skip += first;
+        } catch (error) {
+            console.error(`Error fetching data for ${itemsKey}:`, error);
+            throw error;
+        }
     }
+
+    return allItems;
 }
 
 async function processOrdersWithAggregation(
@@ -56,6 +87,7 @@ async function processOrdersWithAggregation(
     token: string,
 ): Promise<{
     tradesLastForDuration: number;
+    tradesAllTime: number;
     aggregatedResults: any[];
     processOrderLogMessage: string[];
     tradeDistributionForDuration: any[];
@@ -65,63 +97,69 @@ async function processOrdersWithAggregation(
         string,
         {
             totalVolumeForDuration: ethers.BigNumber;
+            totalVolumeAllTime: ethers.BigNumber;
             decimals: number;
             address: string;
             symbol: string;
         }
     > = {};
 
-    const orderTrades: { orderHash: string; trades: any[] }[] = [];
+    const orderTrades = [];
     const processOrderLogMessage: string[] = [];
 
-    try {
-        await Promise.all(
-          filteredOrders.map(async (order) => {
-            const orderHash = order.orderHash;
-    
-            try {
-              // Fetch trades for the order
-              const trades = await fetchTrades(endpoint, orderHash);
-    
-              // Add trades to orderTrades
-              orderTrades.push({
+    for (const order of filteredOrders) {
+        const orderHash = order.orderHash;
+
+        try {
+            // Fetch trades for the order
+            const trades = await fetchAllPaginatedData(
+                endpoint,
+                fetchTradesQuery,
+                {orderHash: orderHash},
+                "trades"
+            );
+
+
+            orderTrades.push({
                 orderHash: orderHash,
                 trades: trades,
-              });
-    
-              // Calculate volumes for the trades
-              const volumes = calculateVolumes(trades, fromTimestamp, toTimestamp);
-    
-              // Aggregate token volumes
-              volumes.forEach((volume) => {
+            });
+
+            // Calculate volumes for the trades
+            const volumes = calculateVolumes(trades, fromTimestamp, toTimestamp);
+
+            // Aggregate token volumes
+            volumes.forEach((volume) => {
                 const token = volume.token;
                 const decimals = volume.decimals;
                 const address = volume.address;
-    
+
                 if (!aggregatedVolumes[address]) {
-                  aggregatedVolumes[address] = {
-                    totalVolumeForDuration: ethers.BigNumber.from(0),
-                    decimals: decimals,
-                    address,
-                    symbol: token,
-                  };
+                    aggregatedVolumes[address] = {
+                        totalVolumeForDuration: ethers.BigNumber.from(0),
+                        totalVolumeAllTime: ethers.BigNumber.from(0),
+                        decimals: decimals,
+                        address,
+                        symbol: token,
+                    };
                 }
-    
+
                 aggregatedVolumes[address].totalVolumeForDuration = aggregatedVolumes[
-                  address
+                    address
                 ].totalVolumeForDuration.add(
-                  ethers.utils.parseUnits(volume.totalVolumeForDuration, decimals),
+                    ethers.utils.parseUnits(volume.totalVolumeForDuration, decimals),
                 );
-              });
-            } catch (error) {
-              console.error(`Error processing order ${orderHash}:`, error);
-              processOrderLogMessage.push(`Error processing order ${orderHash}: ${error}`);
-            }
-          }),
-        );
-      } catch (error) {
-        console.error("Error processing orders:", error);
-      }
+                aggregatedVolumes[address].totalVolumeAllTime = aggregatedVolumes[
+                    address
+                ].totalVolumeAllTime.add(
+                    ethers.utils.parseUnits(volume.totalVolumeAllTime, decimals),
+                );
+            });
+        } catch (error) {
+            console.error(`Error processing order ${orderHash}:`, error);
+            processOrderLogMessage.push(`Error processing order ${orderHash}: ${error}`);
+        }
+    }
 
     const totalTrades = orderTrades.reduce((sum, order) => sum + order.trades.length, 0);
 
@@ -165,6 +203,11 @@ async function processOrdersWithAggregation(
             data.decimals,
         ),
         totalVolumeForDurationUsd: 0,
+        totalVolumeAllTime: ethers.utils.formatUnits(
+            data.totalVolumeAllTime,
+            data.decimals,
+        ),
+        totalVolumeAllTimeUsd: 0,
         currentPrice: 0,
     }));
 
@@ -189,6 +232,7 @@ async function processOrdersWithAggregation(
 
     return {
         tradesLastForDuration,
+        tradesAllTime: totalTrades,
         aggregatedResults,
         processOrderLogMessage,
         tradeDistributionForDuration,
@@ -359,9 +403,11 @@ async function getVolumeDistribution(orderTradesDuration: any[], token: string) 
 function calculateVolumes(trades: any[], fromTimestamp: number, toTimestamp: number) {
     const tokenVolumes: Record<
         string,
-        {
+        {   
             inVolumeForDuration: ethers.BigNumber;
             outVolumeForDuration: ethers.BigNumber;
+            inVolumeAllTime: ethers.BigNumber;
+            outVolumeAllTime: ethers.BigNumber;
             decimals: number;
             address: string;
             symbol: string;
@@ -382,6 +428,8 @@ function calculateVolumes(trades: any[], fromTimestamp: number, toTimestamp: num
                 tokenVolumes[token.address] = {
                     inVolumeForDuration: ethers.BigNumber.from(0),
                     outVolumeForDuration: ethers.BigNumber.from(0),
+                    inVolumeAllTime: ethers.BigNumber.from(0),
+                    outVolumeAllTime: ethers.BigNumber.from(0),
                     decimals: parseInt(token.decimals),
                     address: token.address,
                     symbol: token.symbol,
@@ -391,6 +439,11 @@ function calculateVolumes(trades: any[], fromTimestamp: number, toTimestamp: num
 
         initializeToken(inputToken);
         initializeToken(outputToken);
+
+        tokenVolumes[inputToken.address].inVolumeAllTime =
+                tokenVolumes[inputToken.address].inVolumeAllTime.add(inputAmount);
+        tokenVolumes[outputToken.address].outVolumeAllTime =
+                tokenVolumes[outputToken.address].outVolumeAllTime.add(outputAmount);
 
         if (tradeTimestamp >= fromTimestamp && tradeTimestamp <= toTimestamp) {
             tokenVolumes[inputToken.address].inVolumeForDuration =
@@ -402,9 +455,10 @@ function calculateVolumes(trades: any[], fromTimestamp: number, toTimestamp: num
 
     // Format volumes
     return Object.entries(tokenVolumes).map(([_, data]) => {
-        const { inVolumeForDuration, outVolumeForDuration, decimals, address, symbol } = data;
+        const { inVolumeForDuration, outVolumeForDuration, inVolumeAllTime, outVolumeAllTime, decimals, address, symbol } = data;
 
         const totalVolumeForDuration = inVolumeForDuration.add(outVolumeForDuration);
+        const totalVolumeAllTime = inVolumeAllTime.add(outVolumeAllTime);
 
         return {
             token: symbol,
@@ -413,6 +467,7 @@ function calculateVolumes(trades: any[], fromTimestamp: number, toTimestamp: num
             inVolumeForDuration: ethers.utils.formatUnits(inVolumeForDuration, decimals),
             outVolumeForDuration: ethers.utils.formatUnits(outVolumeForDuration, decimals),
             totalVolumeForDuration: ethers.utils.formatUnits(totalVolumeForDuration, decimals),
+            totalVolumeAllTime: ethers.utils.formatUnits(totalVolumeAllTime, decimals),
         };
     });
 }
@@ -430,11 +485,15 @@ async function convertVolumesToUSD(data: any[]): Promise<any[]> {
                     parseFloat(item.totalVolumeForDuration) * currentPrice
                 ).toString();
                 item.currentPrice = parseFloat(currentPrice.toString()).toString();
+                item.totalVolumeAllTimeUsd = (
+                    parseFloat(item.totalVolumeAllTime) * currentPrice
+                ).toString();
             } else {
                 console.warn(
                     `Could not fetch price for token ${tokenAddress}. Skipping USD conversion.`,
                 );
                 item.totalVolumeForDurationUsd = 0;
+                item.totalVolumeAllTime = 0;
                 item.currentPrice = 0;
             }
         }

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Variables, Order } from "./types";
+import { Order } from "./types";
 import { fetchOrderQuery } from "./queries";
 import { tokenConfig, networkConfig } from "./config";
 import {
@@ -7,26 +7,19 @@ import {
     tokenMetrics,
     calculateCombinedVaultBalance,
 } from "./metrics/orderAndTokenMetreics";
-import { volumeMetrics } from "./metrics/volumeMetrics";
+import { volumeMetrics, fetchAllPaginatedData } from "./metrics/volumeMetrics";
 import { analyzeLiquidity } from "./metrics/analyzeLiquidity";
 
 // Fetch All Orders for Tokens
 export async function fetchAndFilterOrders(
     token: string,
     network: string,
-    skip = 0,
-    first = 1000,
 ): Promise<{ filteredActiveOrders: Order[]; filteredInActiveOrders: Order[] }> {
-    const variables: Variables = { skip, first };
     const endpoint = networkConfig[network].subgraphUrl;
 
     try {
-        const response = await axios.post(endpoint, {
-            query: fetchOrderQuery,
-            variables,
-        });
-
-        const orders: Order[] = response.data.data.orders;
+        
+        const orders: Order[] = await fetchAllPaginatedData(endpoint, fetchOrderQuery, {}, "orders")
         const activeOrders = orders.filter((order) => order.active);
         const inActiveOrders = orders.filter((order) => !order.active);
 
