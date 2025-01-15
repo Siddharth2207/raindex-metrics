@@ -18,8 +18,12 @@ export async function fetchAndFilterOrders(
     const endpoint = networkConfig[network].subgraphUrl;
 
     try {
-        
-        const orders: Order[] = await fetchAllPaginatedData(endpoint, fetchOrderQuery, {}, "orders")
+        const orders: Order[] = await fetchAllPaginatedData(
+            endpoint,
+            fetchOrderQuery,
+            {},
+            "orders",
+        );
         const activeOrders = orders.filter((order) => order.active);
         const inActiveOrders = orders.filter((order) => !order.active);
 

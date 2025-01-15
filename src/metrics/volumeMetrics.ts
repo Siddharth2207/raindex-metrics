@@ -41,7 +41,7 @@ export async function fetchAllPaginatedData(
     query: string,
     variables: Record<string, any>,
     itemsKey: string, // The key in the response where the array of items is located
-    first = 1000 // The batch size for pagination
+    first = 1000, // The batch size for pagination
 ): Promise<any[]> {
     const allItems: any[] = [];
     let skip = 0;
@@ -115,10 +115,9 @@ async function processOrdersWithAggregation(
             const trades = await fetchAllPaginatedData(
                 endpoint,
                 fetchTradesQuery,
-                {orderHash: orderHash},
-                "trades"
+                { orderHash: orderHash },
+                "trades",
             );
-
 
             orderTrades.push({
                 orderHash: orderHash,
@@ -203,10 +202,7 @@ async function processOrdersWithAggregation(
             data.decimals,
         ),
         totalVolumeForDurationUsd: 0,
-        totalVolumeAllTime: ethers.utils.formatUnits(
-            data.totalVolumeAllTime,
-            data.decimals,
-        ),
+        totalVolumeAllTime: ethers.utils.formatUnits(data.totalVolumeAllTime, data.decimals),
         totalVolumeAllTimeUsd: 0,
         currentPrice: 0,
     }));
@@ -403,7 +399,7 @@ async function getVolumeDistribution(orderTradesDuration: any[], token: string) 
 function calculateVolumes(trades: any[], fromTimestamp: number, toTimestamp: number) {
     const tokenVolumes: Record<
         string,
-        {   
+        {
             inVolumeForDuration: ethers.BigNumber;
             outVolumeForDuration: ethers.BigNumber;
             inVolumeAllTime: ethers.BigNumber;
@@ -441,9 +437,9 @@ function calculateVolumes(trades: any[], fromTimestamp: number, toTimestamp: num
         initializeToken(outputToken);
 
         tokenVolumes[inputToken.address].inVolumeAllTime =
-                tokenVolumes[inputToken.address].inVolumeAllTime.add(inputAmount);
+            tokenVolumes[inputToken.address].inVolumeAllTime.add(inputAmount);
         tokenVolumes[outputToken.address].outVolumeAllTime =
-                tokenVolumes[outputToken.address].outVolumeAllTime.add(outputAmount);
+            tokenVolumes[outputToken.address].outVolumeAllTime.add(outputAmount);
 
         if (tradeTimestamp >= fromTimestamp && tradeTimestamp <= toTimestamp) {
             tokenVolumes[inputToken.address].inVolumeForDuration =
@@ -455,7 +451,15 @@ function calculateVolumes(trades: any[], fromTimestamp: number, toTimestamp: num
 
     // Format volumes
     return Object.entries(tokenVolumes).map(([_, data]) => {
-        const { inVolumeForDuration, outVolumeForDuration, inVolumeAllTime, outVolumeAllTime, decimals, address, symbol } = data;
+        const {
+            inVolumeForDuration,
+            outVolumeForDuration,
+            inVolumeAllTime,
+            outVolumeAllTime,
+            decimals,
+            address,
+            symbol,
+        } = data;
 
         const totalVolumeForDuration = inVolumeForDuration.add(outVolumeForDuration);
         const totalVolumeAllTime = inVolumeAllTime.add(outVolumeAllTime);
