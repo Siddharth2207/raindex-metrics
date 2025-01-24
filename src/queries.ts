@@ -35,6 +35,18 @@ export const fetchOrderQuery = `
         balance
         vaultId
       }
+      removeEvents{
+        transaction{
+          id
+          timestamp
+        }
+      }
+      addEvents{
+        transaction{
+          id
+          timestamp
+        }
+      }
       orderbook {
         id
       }
