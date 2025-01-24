@@ -13,6 +13,7 @@ export async function volumeMetrics(
 ): Promise<any> {
     const endpoint = networkConfig[network].subgraphUrl;
     const {
+        orderTrades,
         tradesLastForDuration,
         tradesAllTime,
         aggregatedResults,
@@ -28,6 +29,7 @@ export async function volumeMetrics(
     );
 
     return {
+        orderTrades,
         tradesLastForDuration,
         tradesAllTime,
         aggregatedResults,
@@ -86,6 +88,7 @@ async function processOrdersWithAggregation(
     toTimestamp: number,
     token: string,
 ): Promise<{
+    orderTrades: any[];
     tradesLastForDuration: number;
     tradesAllTime: number;
     aggregatedResults: any[];
@@ -227,6 +230,7 @@ async function processOrdersWithAggregation(
     });
 
     return {
+        orderTrades: orderTrades,
         tradesLastForDuration,
         tradesAllTime: totalTrades,
         aggregatedResults,
