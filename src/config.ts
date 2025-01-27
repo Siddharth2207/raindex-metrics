@@ -91,7 +91,7 @@ export const tokenConfig: Config = {
         ],
         poolsPancakSwapV3: [],
     },
-    QUICK_OLD: {
+    QUICK_NEW: {
         symbol: "QUICK",
         network: "polygon",
         decimals: 18,
@@ -110,7 +110,7 @@ export const tokenConfig: Config = {
         ],
         poolsPancakSwapV3: [],
     },
-    QUICK_NEW: {
+    QUICK_OLD: {
         symbol: "QUICK",
         network: "polygon",
         decimals: 18,
