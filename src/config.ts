@@ -200,7 +200,7 @@ export const tokenConfig: Config = {
         decimals: 18,
         address: "0x94fcd9c18f99538c0f7c61c5500ca79f0d5c4dab",
         poolsV2: ["0x29bb566b8aef8b961d6aa90ee28a6889bc94f5d9"],
-        poolsV3: ["0xe4bfcc208f3447cc5d2f5ccb40c52778d4be2004"],
+        poolsV3: [],
         poolsPancakSwapV3: ["0xe4bfcc208f3447cc5d2f5ccb40c52778d4be2004"],
     },
     WFLR: {
