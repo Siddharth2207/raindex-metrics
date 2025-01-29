@@ -38,6 +38,70 @@ export async function volumeMetrics(
         volumeDistributionForDuration,
     };
 }
+export async function getTradesByTimeStamp(
+    network: string,
+    filteredOrders: any[],
+    fromTimestamp: number,
+    toTimestamp: number
+  ) {
+    try {
+      // Validate input parameters
+      if (!network || !networkConfig[network]?.subgraphUrl) {
+        throw new Error("Invalid network or network configuration.");
+      }
+      if (!Array.isArray(filteredOrders)) {
+        throw new Error("filteredOrders must be an array.");
+      }
+      if (!fromTimestamp || !toTimestamp || fromTimestamp > toTimestamp) {
+        throw new Error("Invalid timestamp range.");
+      }
+  
+      const endpoint = networkConfig[network].subgraphUrl;
+      const orderTrades = [];
+  
+      // Process trades for each order
+      for (const order of filteredOrders) {
+        if (!order?.orderHash) {
+          console.warn("Skipping order due to missing orderHash:", order);
+          continue;
+        }
+  
+        try {
+          // Fetch paginated trades data
+          let trades = await fetchAllPaginatedData(
+            endpoint,
+            fetchTradesQuery,
+            { orderHash: order.orderHash },
+            "trades"
+          );
+  
+          // Map and filter trades
+          const validTrades = trades
+            .map((i) => ({
+              transactionHash: i.tradeEvent?.transaction?.id || "Unknown",
+              timestamp: parseInt(i.timestamp, 10),
+            }))
+            .filter(
+              (i) => i.timestamp >= fromTimestamp && i.timestamp <= toTimestamp
+            );
+  
+          // Append valid trades to the result array
+          orderTrades.push(...validTrades);
+        } catch (orderError) {
+          console.error(
+            `Error fetching trades for orderHash ${order.orderHash}:`,
+            orderError
+          );
+        }
+      }
+  
+      return orderTrades;
+    } catch (error) {
+      console.error("Error in getTradesByTimeStamp:", error);
+      throw error; // Re-throw the error for higher-level handling
+    }
+  }
+  
 export async function fetchAllPaginatedData(
     endpoint: string,
     query: string,

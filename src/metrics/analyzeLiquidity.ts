@@ -15,7 +15,7 @@ export async function analyzeLiquidity(
     const liquidityAnalysisLog: string[] = [];
     liquidityAnalysisLog.push(`Liquidity Analysis for ${tokenSymbol}:`);
 
-    const { totalPoolVolumeUsdForDuration, totalPoolTradesForDuration } =
+    const { tradesAccordingToTimeStamp, totalPoolVolumeUsdForDuration, totalPoolTradesForDuration } =
         await analyzeHyperSyncData(
             tokenConfig[token],
             networkConfig[network],
@@ -27,6 +27,7 @@ export async function analyzeLiquidity(
     liquidityAnalysisLog.push(` - Pool Trades for duration: ${totalPoolTradesForDuration}`);
 
     return {
+        tradesAccordingToTimeStamp,
         liquidityAnalysisLog,
         totalTokenExternalVolForDurationUsd: totalPoolVolumeUsdForDuration,
         totalTokenExternalTradesForDuration: totalPoolTradesForDuration,
@@ -219,6 +220,9 @@ async function analyzeHyperSyncData(
     const totalVolumeForTokens: Record<string, { totalTokenVolumeForDuration: number }> = {};
     let totalPoolTradesForDuration = 0;
 
+    let tradesAccordingToTimeStamp:any[] = []
+    const { currentPrice: currentTokenPrice } = await getTokenPriceUsd(token.address, token.symbol);
+
     for (let i = 0; i < token.poolsV2.length; i++) {
         const poolContractAddress = token.poolsV2[i];
         const poolContract = new ethers.Contract(poolContractAddress, uniswapV2PoolAbi, provider);
@@ -258,6 +262,18 @@ async function analyzeHyperSyncData(
                 totalAmount1 = totalAmount1
                     .add(ethers.BigNumber.from(decodedAmount[1]))
                     .add(ethers.BigNumber.from(decodedAmount[3]));
+
+
+                let tokenAmount = token0Address.toLowerCase() === token.address.toLowerCase() ? 
+                ethers.utils.formatUnits(ethers.BigNumber.from(decodedAmount[0]).add(ethers.BigNumber.from(decodedAmount[2])),token0Decimals).toString():
+                ethers.utils.formatUnits(ethers.BigNumber.from(decodedAmount[1]).add(ethers.BigNumber.from(decodedAmount[3])),token1Decimals).toString()
+            
+                tradesAccordingToTimeStamp.push({
+                    timestamp: swapQueryResult[i].timestamp,
+                    transactionHash: swapQueryResult[i].transaction_hash,
+                    amountInTokens: tokenAmount,
+                    amountInUsd: parseFloat(tokenAmount) * currentTokenPrice
+                })
             } else {
                 console.error("Hex string is undefined!");
             }
@@ -323,6 +339,17 @@ async function analyzeHyperSyncData(
                 );
                 totalAmount0 = totalAmount0.add(ethers.BigNumber.from(decodedAmount[0]).abs());
                 totalAmount1 = totalAmount1.add(ethers.BigNumber.from(decodedAmount[1]).abs());
+
+                let tokenAmount = token0Address.toLowerCase() === token.address.toLowerCase() ? 
+                ethers.utils.formatUnits(ethers.BigNumber.from(decodedAmount[0]).abs(),token0Decimals).toString():
+                ethers.utils.formatUnits(ethers.BigNumber.from(decodedAmount[1]).abs(),token1Decimals).toString()
+            
+                tradesAccordingToTimeStamp.push({
+                    timestamp: swapQueryResult[i].timestamp,
+                    transactionHash: swapQueryResult[i].transaction_hash,
+                    amountInTokens: tokenAmount,
+                    amountInUsd: parseFloat(tokenAmount) * currentTokenPrice
+                })
             } else {
                 console.error("Hex string is undefined!");
             }
@@ -388,6 +415,17 @@ async function analyzeHyperSyncData(
                 );
                 totalAmount0 = totalAmount0.add(ethers.BigNumber.from(decodedAmount[0]).abs());
                 totalAmount1 = totalAmount1.add(ethers.BigNumber.from(decodedAmount[1]).abs());
+
+                let tokenAmount = token0Address.toLowerCase() === token.address.toLowerCase() ? 
+                ethers.utils.formatUnits(ethers.BigNumber.from(decodedAmount[0]).abs(),token0Decimals).toString():
+                ethers.utils.formatUnits(ethers.BigNumber.from(decodedAmount[1]).abs(),token1Decimals).toString()
+            
+                tradesAccordingToTimeStamp.push({
+                    timestamp: swapQueryResult[i].timestamp,
+                    transactionHash: swapQueryResult[i].transaction_hash,
+                    amountInTokens: tokenAmount,
+                    amountInUsd: parseFloat(tokenAmount) * currentTokenPrice
+                })
             } else {
                 console.error("Hex string is undefined!");
             }
@@ -418,14 +456,11 @@ async function analyzeHyperSyncData(
             };
         }
     }
-
-    const { currentPrice: currentTokenPrice } = await getTokenPriceUsd(token.address, token.symbol);
-
     const totalPoolVolumeUsdForDuration =
         totalVolumeForTokens[token.address.toLowerCase()].totalTokenVolumeForDuration *
         currentTokenPrice;
 
-    return { totalPoolVolumeUsdForDuration, totalPoolTradesForDuration };
+    return { tradesAccordingToTimeStamp, totalPoolVolumeUsdForDuration, totalPoolTradesForDuration };
 }
 
 async function fetchLogs(
@@ -456,11 +491,12 @@ async function fetchLogs(
                         "transaction_hash",
                         "data",
                         "address",
-                        "topic0",
-                        "topic1",
-                        "topic2",
-                        "topic3",
+                        "topic0"
                     ],
+                    block: [
+                        "number",
+                        "timestamp"
+                    ]
                 },
             });
 
@@ -486,9 +522,14 @@ async function fetchLogs(
         }
     }
 
-    return Array.from(
-        new Map(
-            logs.flatMap((item) => item.logs).map((log) => [log.transaction_hash, log]),
-        ).values(),
-    );
+    return logs.flatMap((entry) => {
+        // Create a map of block_number to timestamp
+        const blockMap = new Map(entry.blocks.map((block: any) => [block.number, parseInt(block.timestamp, 16)]));
+      
+        // Map each log with the corresponding timestamp
+        return entry.logs.map((log: any) => ({
+          ...log,
+          timestamp: blockMap.get(log.block_number) || null, // Add timestamp if available
+        }));
+      });
 }
