@@ -78,6 +78,7 @@ export async function getTradesByTimeStamp(
           // Map and filter trades
           const validTrades = trades
             .map((i) => ({
+              orderHash: order.orderHash,
               transactionHash: i.tradeEvent?.transaction?.id || "Unknown",
               timestamp: parseInt(i.timestamp, 10),
             }))
