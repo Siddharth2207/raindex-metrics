@@ -78,6 +78,8 @@ export const fetchTradesQuery = `query OrderTakesListQuery($orderHash: Bytes!, $
     }
     outputVaultBalanceChange {
       amount
+      oldVaultBalance
+      newVaultBalance
       vault {
         token {
           id
@@ -99,6 +101,8 @@ export const fetchTradesQuery = `query OrderTakesListQuery($orderHash: Bytes!, $
         }
       }
       amount
+      oldVaultBalance
+      newVaultBalance
     }
   }
 }`;
