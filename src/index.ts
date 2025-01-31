@@ -5,3 +5,5 @@ export * from "./generateReport";
 export * from "./config";
 export * from "./priceUtils";
 export * from "./types";
+export * from "./queries";
+
