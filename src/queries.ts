@@ -106,3 +106,25 @@ export const fetchTradesQuery = `query OrderTakesListQuery($orderHash: Bytes!, $
     }
   }
 }`;
+
+export const vaultDepositsQuery = `query VaultDeposits($vaultId: String!, $first: Int = 1000, $skip: Int = 0) {
+  deposits(
+    first: $first
+    skip: $skip
+    where: { vault_: { id: $vaultId } }
+  ) {
+    id
+    amount
+  }
+}`;
+
+export const vaultWithdrawalQuery = `query VaultWithdrawals($vaultId: String!, $first: Int = 1000, $skip: Int = 0) {
+  withdrawals(
+    first: $first
+    skip: $skip
+    where: { vault_: { id: $vaultId } }
+  ) {
+    id
+    amount
+  }
+}`;
