@@ -302,6 +302,69 @@ export const tokenConfig: Config = {
         poolsV3: ["0x551579dc8bdfa60f6d21816fb25429ee49b570d5"],
         poolsPancakSwapV3: [],
     },
+    SARCO: {
+        symbol: "SARCO",
+        network: "base",
+        decimals: 18,
+        address: "0xf3907bc0fff5ff5acf1e3dd7987005779c7bf57d",
+        poolsV2: [],
+        poolsV3: ["0x5038f9029eead091930d0eb759aec864b4327ce0"],
+        poolsPancakSwapV3: [],
+    },
+    RKFI: {
+        symbol: "RKFI",
+        network: "base",
+        decimals: 18,
+        address: "0x65fda84473084ba2cca8452883e6ea3561092234",
+        poolsV2: [],
+        poolsV3: ["0xa4652c82685da2b3c9f12aa0c3de7e811e74c31f"],
+        poolsPancakSwapV3: [],
+    },
+    TOAST: {
+        symbol: "TOAST",
+        network: "base",
+        decimals: 18,
+        address: "0x21f8c472d1702919af0af57a9e2926f2c1fb67c5",
+        poolsV2: ['0xc04a0150a2f09cc35c6af6331124991e0c479a25'],
+        poolsV3: ["0xbf210012c65bf75da1f04634b17a705612c1cace"],
+        poolsPancakSwapV3: [],
+    },
+    AKUMA: {
+        symbol: "AKUMA",
+        network: "base",
+        decimals: 18,
+        address: "0x2f20cf3466f80a5f7f532fca553c8cbc9727fef6",
+        poolsV2: [],
+        poolsV3: [
+            '0x86bc3eb95dcd9edd922d5c5f108ab29688b5e320',
+            '0x0d7907a2c8b8cd50f29ede47dd0936af6c1f2940',
+            '0x8a371c873e530124a5c59640440f1c72f73f4e0a'
+        ],
+        poolsPancakSwapV3: []
+    },
+    PATEX: {
+        symbol: "PATEX",
+        network: "bsc",
+        decimals: 18,
+        address: "0xfd4f2caf941b6d737382dce420b368de3fc7f2d4",
+        poolsV2: [],
+        poolsV3: [],
+        poolsPancakSwapV3: ['0xc9b80fae26aa04f2e914cfa1773b3b61a02222c7'],
+    },
+    CYWETH: {
+        symbol: "cyWETH",
+        network: "flare",
+        decimals: 18,
+        address: "0xd8bf1d2720e9ffd01a2f9a2efc3e101a05b852b4",
+        poolsV2: [],
+        poolsV3: [
+            '0xdbf4c95155f7c8dbd8a6d439616ef374fac11207',
+            '0x650a36213419fc19892b375595960180e272e16b',
+            '0x76f5bfc1a3987c58c8e88ad7298c4a26be9b440c',
+            '0xfddf7f16aa0a84d2daa0a12046a253523e436872'
+        ],
+        poolsPancakSwapV3: [],
+    }
 };
 
 export const networkConfig: NetworkConfigurations = {
