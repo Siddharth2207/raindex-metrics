@@ -53,6 +53,23 @@ export const tokenConfig: Config = {
         ],
         poolsPancakSwapV3: [],
     },
+    TIBBIR : {
+        symbol: "TIBBIR",
+        network: "base",
+        decimals: 18,
+        address: "0xa4a2e2ca3fbfe21aed83471d28b6f65a233c6e00",
+        poolsV2: [
+            '0x0c3b466104545efa096b8f944c1e524e1d0d4888'
+        ],
+        poolsV3: [
+            '0x0f664affb82f074937d5cfcd61b97f3f32d5dc50',
+            '0xb08a32fb67f910fcfe5dc9561a6ea4a159bd9908'
+        ],
+        poolsPancakSwapV3: [
+            '0xa917744c47706f3cd6a893c2f85bff9d34620a9a',
+            '0x1b82bd3ffd1b45bf11a98eccc12abe14ca64ed48'
+        ],
+    },
     WPOL: {
         symbol: "WPOL",
         network: "polygon",
@@ -277,7 +294,7 @@ export const tokenConfig: Config = {
     },
     PAI: {
         symbol: "PAI",
-        network: "ethereum",
+        network: "mainnet",
         decimals: 18,
         address: "0x13e4b8cffe704d3de6f19e52b201d92c21ec18bd",
         poolsV2: ["0x24b8c320a4505057cb1e4808d200535ec5320817"],
@@ -286,7 +303,7 @@ export const tokenConfig: Config = {
     },
     LOCK: {
         symbol: "LOCK",
-        network: "ethereum",
+        network: "mainnet",
         decimals: 18,
         address: "0x922d8563631b03c2c4cf817f4d18f6883aba0109",
         poolsV2: [],
@@ -467,7 +484,7 @@ export const networkConfig: NetworkConfigurations = {
             "https://api.goldsky.com/api/public/project_clv14x04y9kzi01saerx7bxpg/subgraphs/ob4-flare/2024-12-13-9dc7/gn",
         stables: [],
     },
-    ethereum: {
+    mainnet: {
         chainId: 1,
         blockTime: 12,
         rpc: "https://rpc.ankr.com/eth",
