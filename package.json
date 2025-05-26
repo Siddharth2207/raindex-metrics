@@ -1,6 +1,6 @@
 {
   "name": "raindex-reports",
-  "version": "1.0.36",
+  "version": "1.0.37",
   "description": "A CLI tool to generate reports on volume and trades with external liquidity as well as Raindex trades.",
   "author": "Rain Protocol",
   "scripts": {

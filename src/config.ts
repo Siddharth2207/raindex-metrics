@@ -79,6 +79,19 @@ export const tokenConfig: Config = {
             '0x1b82bd3ffd1b45bf11a98eccc12abe14ca64ed48'
         ],
     },
+    VIRTUAL: {
+        symbol: "VIRTUAL",
+        network: "base",
+        decimals: 18,
+        address: "0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b",
+        poolsV2: [
+            '0xe31c372a7af875b3b5e0f3713b17ef51556da667'
+        ],
+        poolsV3: [
+            '0x529d2863a1521d0b57db028168fde2e97120017c'
+        ],
+        poolsPancakSwapV3: [],
+    },
     WPOL: {
         symbol: "WPOL",
         network: "polygon",
